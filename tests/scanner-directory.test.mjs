@@ -80,3 +80,28 @@ test('Trading Arena exposes clickable personal indicator suite and oscillator ca
  for(const calc of ['function hma(','function vwap(','function rsis(','function stoch(','function cci(','function macds(','function atrs('])assert.ok(arena.includes(calc),calc);
  assert.match(arena,/indicatorPanels/);
 });
+
+test('Trading Arena supports configurable virtual account size with explicit reset',()=>{
+ assert.match(arena,/id="accountSize"/);
+ assert.match(arena,/id="customAccountSize"/);
+ assert.match(arena,/id="applyAccountSize"/);
+ assert.match(arena,/initialBalance/);
+ assert.match(arena,/Reset this device-local practice account/);
+});
+test('Trading Arena watchlist persists and scanner candidates can be added to it',()=>{
+ assert.match(arena,/rolyfe\.pro\.watchlist\.v1/);
+ assert.match(arena,/function addToWatchlist/);
+ assert.match(arena,/function renderWatchlist/);
+ assert.match(arena,/async function runScanner/);
+ assert.match(arena,/data-view/);
+ assert.match(arena,/provider:'finnhub'/);
+ assert.match(arena,/id="scannerMode"/);
+ assert.match(arena,/id="watchlistItems"/);
+ assert.match(arena,/Watch/);
+});
+test('Trading Arena responsive layout prevents horizontal overflow and stretched grid tiles',()=>{
+ assert.match(arena,/overflow-x:hidden/);
+ assert.match(arena,/grid-auto-rows:min-content/);
+ assert.match(arena,/@media\(max-width:900px\)/);
+ assert.match(arena,/minmax\(0,1fr\)/);
+});
