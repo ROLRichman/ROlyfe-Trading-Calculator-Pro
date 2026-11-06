@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { Script } from 'node:vm';
 const root=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const hub=readFileSync(new URL('../scanner-hub/index.html',import.meta.url),'utf8');
 const arena=readFileSync(new URL('../chart-wars/index.html',import.meta.url),'utf8');
@@ -31,6 +32,13 @@ test('Trading Arena uses the existing server-side market-data function for real 
  assert.match(arena,/timestamp/i);
  assert.doesNotMatch(arena,/api\.tickerbot\.io/);
  assert.doesNotMatch(arena,/FINNHUB_API_KEY|TICKERBOT_API_KEY/);
+ assert.match(arena,/Authorization:'Bearer '\+SUPABASE_LEGACY_ANON_JWT/);
+});
+
+test('Trading Arena embedded JavaScript parses without syntax errors',()=>{
+ const match=arena.match(/<script>([\\s\\S]*?)<\\/script>/);
+ assert.ok(match,'Trading Arena script element is present');
+ assert.doesNotThrow(()=>new Script(match[1]));
 });
 
 test('Chart Wars and paper trading share one device-local virtual account',()=>{
