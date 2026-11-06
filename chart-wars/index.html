@@ -1,45 +1,561 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#07111d"><title>RO’Lyfe Chart Wars™ · Trading Calculator Pro</title>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07111d">
+<title>RO’Lyfe Chart Wars™ · Trading Arena</title>
 <style>
-:root{color-scheme:dark;--bg:#07111d;--panel:#101e2d;--line:#263b4d;--muted:#a8bbcc;--green:#59e1aa;--red:#ff7e86;--gold:#f5cc78;--blue:#80c7ff}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 12% 0%,#14352d 0,transparent 36%),var(--bg);color:#eef5fb;font:15px/1.5 system-ui,Arial,sans-serif}main{width:min(1180px,100%);margin:auto;padding:18px}a{color:var(--blue);text-decoration:none}
-header,.panel{border:1px solid var(--line);border-radius:16px;background:linear-gradient(145deg,#112235,#0d1927);padding:17px;margin:12px 0}header{background:linear-gradient(120deg,#0c2924,#102338 65%,#171d31);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
-.brand{color:var(--green);font-size:.75rem;font-weight:900;letter-spacing:.16em}h1{font-size:clamp(1.55rem,4vw,2.35rem);line-height:1.1;margin:5px 0}h2{font-size:1.08rem;margin:0 0 10px;color:#a8f1ce}p{color:var(--muted);margin:6px 0}
-.pill{display:inline-flex;align-items:center;gap:7px;border:1px solid #3b745e;border-radius:999px;padding:5px 10px;color:#a8f1ce;font-size:.72rem;font-weight:800;letter-spacing:.05em}.topnav{display:flex;gap:8px;flex-wrap:wrap}.topnav a,.btn{border:1px solid #36556a;border-radius:10px;padding:9px 12px;background:#0b1724;color:#eaf5ff;font:inherit;font-weight:750;cursor:pointer}.topnav a:hover,.btn:hover{border-color:var(--green)}
-.layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(260px,.8fr);gap:12px;align-items:start}.chart-wrap{background:#081521;border:1px solid #243b4e;border-radius:12px;padding:10px;overflow:hidden}.chart-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px}.symbol{font-weight:900;font-size:1.05rem}.sub{font-size:.75rem;color:var(--muted)}
-svg{display:block;width:100%;height:auto;min-height:260px}.gridline{stroke:#1c3040;stroke-width:1}.axis{fill:#8ea5b9;font-size:10px}.wick{stroke-width:2}.up{fill:#59e1aa;stroke:#59e1aa}.down{fill:#ff7e86;stroke:#ff7e86}
-.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.choice{padding:13px 8px;border-radius:11px;border:1px solid var(--line);background:#0b1724;color:#eaf5ff;font-weight:900;cursor:pointer}.choice[data-pick="bullish"]{border-color:#38785f}.choice[data-pick="bearish"]{border-color:#854b54}.choice[data-pick="sideways"]{border-color:#7d6a3d}.choice.selected{outline:2px solid var(--green);background:#173329}
-.btn.primary{background:#14513b;border-color:#3a9c72;color:#eafff4}.btn:disabled{opacity:.4;cursor:not-allowed}.actionrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#0a1724;border:1px solid #243b4e;border-radius:11px;padding:10px}.stat small{display:block;color:var(--muted);font-size:.7rem}.stat strong{font-size:1.2rem}
-.feedback{padding:12px;border-radius:11px;border:1px solid #36556a;background:#0b1724;margin-top:12px;min-height:74px}.feedback.good{border-color:#3d8b68}.feedback.bad{border-color:#9b535b}.rule{font-size:.82rem;color:#b8c9d8;padding-left:18px}.rule li{margin:5px 0}.note{border-left:3px solid var(--gold);padding:8px 11px;background:#241e12;color:#f4dfb1;border-radius:0 9px 9px 0;font-size:.8rem;margin-top:10px}footer{font-size:.75rem;color:#8298ac;padding:10px 3px 28px}
-@media(max-width:760px){main{padding:10px}.layout{grid-template-columns:1fr}.controls{gap:6px}.choice{font-size:.85rem;padding:12px 5px}.stats{grid-template-columns:repeat(3,1fr)}}
-</style></head>
+:root{color-scheme:dark;--bg:#07111d;--panel:#101e2d;--panel2:#0b1724;--line:#263b4d;--muted:#9fb3c7;--green:#59e1aa;--red:#ff7e86;--gold:#f5cc78;--blue:#80c7ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 10% 0%,#14352d 0,transparent 34%),var(--bg);color:#eef5fb;font:14px/1.5 system-ui,Arial,sans-serif}main{width:min(1280px,100%);margin:auto;padding:14px}
+header,.panel{border:1px solid var(--line);border-radius:15px;background:linear-gradient(145deg,#112235,#0d1927);padding:15px;margin:11px 0}
+header{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;background:linear-gradient(120deg,#0c2924,#102338 65%,#171d31)}
+.brand{color:var(--green);font-size:.72rem;font-weight:900;letter-spacing:.16em}h1{font-size:clamp(1.45rem,4vw,2.1rem);line-height:1.1;margin:4px 0}h2{font-size:1.06rem;margin:0 0 9px;color:#a8f1ce}h3{font-size:.93rem;margin:0 0 6px}p{color:var(--muted);margin:5px 0}
+a{color:var(--blue);text-decoration:none}.topnav,.tabs,.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.topnav a,.tab,.btn{border:1px solid #36556a;border-radius:9px;padding:8px 11px;background:#0b1724;color:#eaf5ff;font:inherit;font-weight:750;cursor:pointer}
+.topnav a:hover,.btn:hover,.tab:hover{border-color:var(--green)}.tab.active{background:#14513b;border-color:#3a9c72;color:#eafff4}
+.accountbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+.stat{background:#0a1724;border:1px solid #243b4e;border-radius:11px;padding:10px;min-width:0}.stat small{display:block;color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em}.stat strong{display:block;font-size:1.1rem;overflow-wrap:anywhere}.stat .positive{color:var(--green)}.stat .negative{color:var(--red)}
+.marketbar{display:grid;grid-template-columns:minmax(115px,.8fr) minmax(115px,.8fr) minmax(115px,.8fr) auto;gap:8px;align-items:end}
+.field{display:grid;gap:5px;min-width:0}.field label{font-size:.72rem;color:var(--muted);font-weight:750}.field input,.field select{width:100%;min-width:0;border:1px solid #36556a;border-radius:9px;background:#071521;color:#f2f7fc;padding:10px;font:inherit}
+.btn.primary{background:#14513b;border-color:#3a9c72;color:#eafff4}.btn.danger{border-color:#854b54;color:#ffc1c4}.btn:disabled{opacity:.4;cursor:not-allowed}
+.statusline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.76rem;color:var(--muted);margin-top:10px}.pill{display:inline-flex;align-items:center;border:1px solid #3b745e;border-radius:999px;padding:4px 9px;color:#a8f1ce;font-size:.68rem;font-weight:850;letter-spacing:.04em}.pill.warn{border-color:#806b3c;color:var(--gold)}.pill.error{border-color:#854b54;color:#ffb2b7}
+.chart-panel{padding:10px}.chart-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;padding:2px 4px 9px}.symbol{font-size:1.06rem;font-weight:900}.sub{font-size:.73rem;color:var(--muted)}.chartwrap{border:1px solid #243b4e;border-radius:10px;background:#071521;overflow:hidden}svg{display:block;width:100%;height:auto}.gridline{stroke:#1c3040;stroke-width:1}.axis{fill:#8ea5b9;font-size:10px}.wick{stroke-width:1.5}.up{fill:#59e1aa;stroke:#59e1aa}.down{fill:#ff7e86;stroke:#ff7e86}.ema20{fill:none;stroke:#80c7ff;stroke-width:1.7}.ema50{fill:none;stroke:#f5cc78;stroke-width:1.7}.volumeUp{fill:#348d70;opacity:.75}.volumeDown{fill:#a84f5b;opacity:.75}
+.indicators{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:9px}.indicator{background:#0a1724;border:1px solid #243b4e;border-radius:9px;padding:8px}.indicator small{display:block;color:var(--muted);font-size:.65rem}.indicator strong{font-size:.9rem}
+.view[hidden]{display:none!important}.view{margin-top:12px}.grid2{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(270px,.8fr);gap:10px;align-items:start}.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}.choice{padding:12px 7px;border-radius:10px;border:1px solid var(--line);background:#0b1724;color:#eaf5ff;font-weight:900;cursor:pointer}.choice[data-pick="bullish"]{border-color:#38785f}.choice[data-pick="bearish"]{border-color:#854b54}.choice[data-pick="sideways"]{border-color:#7d6a3d}.choice.selected{outline:2px solid var(--green);background:#173329}
+.feedback{padding:11px;border-radius:10px;border:1px solid #36556a;background:#0b1724;margin-top:9px;min-height:56px;color:#c2d2e0}.feedback.good{border-color:#3d8b68;color:#b9f3d6}.feedback.bad{border-color:#9b535b;color:#ffc1c4}.note{border-left:3px solid var(--gold);padding:8px 10px;background:#241e12;color:#f4dfb1;border-radius:0 8px 8px 0;font-size:.76rem;margin-top:9px}
+.ordergrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.tablewrap{overflow-x:auto;border:1px solid #243b4e;border-radius:10px}table{width:100%;border-collapse:collapse;min-width:540px;font-size:.78rem}th,td{text-align:left;padding:8px 9px;border-bottom:1px solid #243b4e;white-space:nowrap}th{color:#a8f1ce;background:#0a1724;font-size:.68rem;text-transform:uppercase}tr:last-child td{border-bottom:0}.empty{padding:14px;color:var(--muted);font-size:.8rem}
+.badges{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}.badgecard{border:1px solid #36556a;border-radius:10px;padding:10px;background:#0b1724}.badgecard.earned{border-color:#3b8c6b;background:#102b23}.badgecard strong{display:block;color:#dffced}.badgecard small{color:var(--muted)}
+.warning{border-color:#806b3c;background:#211b10;color:#f4dfb1}.small{font-size:.75rem}footer{padding:14px 4px 26px;color:#8298ac;font-size:.72rem}
+@media(max-width:760px){main{padding:9px}.grid2{grid-template-columns:1fr}.marketbar{grid-template-columns:repeat(2,minmax(0,1fr))}.marketbar .btn{width:100%}.accountbar{grid-template-columns:repeat(2,minmax(0,1fr))}.indicators{grid-template-columns:repeat(2,minmax(0,1fr))}.topnav{width:100%}.topnav a{flex:1;text-align:center}}
+@media(max-width:390px){.marketbar{grid-template-columns:1fr}.controls{gap:5px}.choice{font-size:.8rem}.tab{flex:1;text-align:center;padding:8px 7px}}
+</style>
+</head>
 <body><main>
-<header><div><div class="brand">RO’LYFE TRADING CALCULATOR PRO</div><h1>CHART WARS™</h1><p>Read the chart. Make the call. Reveal the move.</p></div><div class="topnav"><a href="../">← Pro Home</a><a href="../scanner-hub/">Scanner Hub</a></div></header>
-<section class="panel"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><span class="pill">PRACTICE ARENA · ROUND <span id="round">1</span></span><h2 style="margin-top:10px">Direction Challenge</h2><p>Study the candles, then predict the next move over the reveal window.</p></div><div class="pill" style="border-color:#806b3c;color:#f5cc78">DEMO DATA · NOT LIVE</div></div>
-<div class="layout"><div><div class="chart-wrap"><div class="chart-head"><div><div class="symbol" id="symbol">ROLY · Practice Scenario</div><div class="sub" id="chartMeta">15-minute candles · 18 bars shown</div></div><div class="sub" id="priceLabel">Last close —</div></div><svg id="chart" viewBox="0 0 760 330" role="img" aria-label="Illustrative candlestick practice chart"></svg></div>
-<div class="controls" aria-label="Choose your prediction"><button class="choice" data-pick="bullish">↗ BULLISH</button><button class="choice" data-pick="sideways">→ SIDEWAYS</button><button class="choice" data-pick="bearish">↘ BEARISH</button></div>
-<div class="actionrow"><button class="btn primary" id="reveal" disabled>Lock prediction &amp; reveal</button><button class="btn" id="next" disabled>Next round →</button><button class="btn" id="reset">Reset session</button></div><div class="feedback" id="feedback" aria-live="polite">Choose Bullish, Sideways, or Bearish. Your call is locked before the next candles appear.</div></div>
-<aside><div class="panel" style="margin:0 0 12px"><h2>Performance</h2><div class="stats"><div class="stat"><small>Score</small><strong id="score">0</strong></div><div class="stat"><small>Correct</small><strong id="correct">0</strong></div><div class="stat"><small>Accuracy</small><strong id="accuracy">—</strong></div></div><div style="margin-top:10px" class="stat"><small>Current streak</small><strong id="streak">0</strong></div></div>
-<div class="panel" style="margin:0"><h2>How to play</h2><ol class="rule"><li>Read the visible price action and candle structure.</li><li>Choose the likely direction for the next three candles.</li><li>Lock your call. The hidden candles are revealed.</li><li>Review the explanation and build your score.</li></ol><div class="note">This first playable build uses clearly labeled synthetic practice candles. It does not represent a real ticker, historical session, live quote, trading signal, or recommendation.</div></div></aside></div></section>
-<footer>RO’Lyfe Chart Wars™ · Educational practice only. No broker connection, order routing, or investment advice. Future market-data replay will be added only after its provider, timestamps, coverage and data quality are verified.</footer>
+<header>
+ <div><div class="brand">RO’LYFE TRADING CALCULATOR PRO</div><h1>CHART WARS™ · TRADING ARENA</h1><p>Real market history. Virtual capital. One shared training account.</p></div>
+ <div class="topnav"><a href="../">← Pro Home</a><a href="../scanner-hub/">Scanner Hub</a></div>
+</header>
+<section class="accountbar" aria-label="Shared virtual account">
+ <div class="stat"><small>Virtual equity</small><strong id="equity">$10,000.00</strong></div>
+ <div class="stat"><small>Available cash</small><strong id="cash">$10,000.00</strong></div>
+ <div class="stat"><small>Realized P/L</small><strong id="realized">$0.00</strong></div>
+ <div class="stat"><small>Chart Wars score</small><strong id="gameScore">0</strong></div>
+</section>
+<section class="panel">
+ <div class="marketbar">
+  <div class="field"><label for="symbol">STOCK / ETF</label><input id="symbol" list="symbols" value="AAPL" maxlength="15" autocomplete="off"><datalist id="symbols"><option>AAPL</option><option>NVDA</option><option>TSLA</option><option>AMD</option><option>SPY</option><option>QQQ</option><option>MSFT</option><option>AMZN</option><option>GOOGL</option><option>PLTR</option></datalist></div>
+  <div class="field"><label for="interval">CANDLE TIMEFRAME</label><select id="interval"><option value="5m">5 minutes</option><option value="15m" selected>15 minutes</option><option value="1h">1 hour</option><option value="4h">4 hours</option><option value="1d">1 day</option></select></div>
+  <div class="field"><label for="session">SESSION</label><select id="session"><option value="regular" selected>Regular hours</option><option value="all">All sessions</option></select></div>
+  <button class="btn primary" id="loadData">Load real market data</button>
+ </div>
+ <div class="statusline"><span id="barsStatus" class="pill warn">MARKET HISTORY NOT LOADED</span><span id="quoteStatus" class="pill warn">QUOTE NOT CHECKED</span><span id="dataStatus">Select a ticker and load provider data. No synthetic candles are substituted.</span></div>
+</section>
+<section class="panel chart-panel">
+ <div class="chart-head"><div><div class="symbol" id="chartTitle">AAPL · Waiting for data</div><div class="sub" id="chartSub">Tickerbot historical OHLCV · selected timeframe</div></div><div class="sub" id="lastPrice">Last close —</div></div>
+ <div class="chartwrap"><svg id="chart" viewBox="0 0 900 430" role="img" aria-label="Historical stock candlestick chart"><text x="30" y="55" fill="#8ea5b9" font-size="14">Load real market data to view candles.</text></svg></div>
+ <div class="indicators">
+  <div class="indicator"><small>EMA 20</small><strong id="ema20">—</strong></div><div class="indicator"><small>EMA 50</small><strong id="ema50">—</strong></div><div class="indicator"><small>RSI 14</small><strong id="rsi">—</strong></div><div class="indicator"><small>MACD 12 / 26 / 9</small><strong id="macd">—</strong></div>
+ </div>
+</section>
+<section class="panel">
+ <nav class="tabs" aria-label="Training workspace">
+  <button class="tab active" data-tab="wars">Chart Wars</button><button class="tab" data-tab="simulator">Paper Trading</button><button class="tab" data-tab="performance">Performance Lab</button>
+ </nav>
+</section>
+<section class="view" data-view="wars" id="wars">
+ <div class="grid2">
+  <div class="panel">
+   <div class="statusline"><span class="pill">HISTORICAL REPLAY</span><span id="roundLabel" class="pill warn">ROUND —</span></div>
+   <h2>Read the chart. Predict the next move.</h2>
+   <p>Chart Wars hides the next three real provider candles. Make your call before revealing them.</p>
+   <div class="controls"><button class="choice" data-pick="bullish">↗ BULLISH</button><button class="choice" data-pick="sideways">→ SIDEWAYS</button><button class="choice" data-pick="bearish">↘ BEARISH</button></div>
+   <div class="actions"><button class="btn primary" id="lockReveal" disabled>Lock prediction &amp; reveal</button><button class="btn" id="nextRound" disabled>Next round →</button></div>
+   <div class="feedback" id="gameFeedback" aria-live="polite">Load historical bars first. Each round uses a real ticker/timeframe window.</div>
+  </div>
+  <aside class="panel">
+   <h2>Training record</h2>
+   <div class="accountbar">
+    <div class="stat"><small>Correct calls</small><strong id="correctCalls">0</strong></div><div class="stat"><small>Accuracy</small><strong id="accuracy">—</strong></div>
+    <div class="stat"><small>Current streak</small><strong id="streak">0</strong></div><div class="stat"><small>Best streak</small><strong id="bestStreak">0</strong></div>
+   </div>
+   <div class="note">This is historical chart practice, not a forecast or trading signal. Historical bars are real provider data; your score is educational.</div>
+  </aside>
+ </div>
+</section>
+<section class="view" data-view="simulator" id="simulator" hidden>
+ <div class="grid2">
+  <div class="panel">
+   <h2>Virtual stock order ticket</h2>
+   <p>Long-only paper trading · no leverage · no broker connection.</p>
+   <div class="ordergrid">
+    <div class="field"><label for="side">SIDE</label><select id="side"><option value="buy">BUY</option><option value="sell">SELL</option></select></div>
+    <div class="field"><label for="quantity">SHARES</label><input type="number" id="quantity" min="1" step="1" value="1"></div>
+    <div class="field"><label for="orderType">ORDER TYPE</label><select id="orderType"><option value="market">Market</option><option value="limit">Limit</option><option value="stop">Stop</option></select></div>
+    <div class="field" id="triggerField" hidden><label for="triggerPrice">LIMIT / STOP PRICE</label><input type="number" id="triggerPrice" min="0.01" step="0.01" placeholder="Enter trigger price"></div>
+    <div class="field"><label for="slippage">SIMULATED SLIPPAGE (BPS)</label><input type="number" id="slippage" min="0" max="100" step="1" value="5"></div>
+    <div class="field"><label>REFERENCE QUOTE</label><div class="stat"><strong id="ticketQuote">—</strong><small id="ticketQuoteTime">Load a quote</small></div></div>
+   </div>
+   <div class="actions" style="margin-top:10px"><button class="btn primary" id="placeOrder">Place paper order</button><button class="btn" id="refreshQuote">Refresh quote &amp; evaluate orders</button></div>
+   <div class="feedback" id="orderFeedback" aria-live="polite">Market orders use the latest Finnhub provider quote and apply the displayed simulated slippage. Limit and stop orders remain pending until a refreshed quote reaches the trigger.</div>
+   <div class="note">A provider timestamp is shown with every quote. Exchange entitlement determines whether a quote is real-time or delayed. Paper fills are simulated, never routed to a brokerage.</div>
+  </div>
+  <aside class="panel">
+   <h2>Open positions</h2><div id="positions" class="tablewrap"><div class="empty">No positions yet.</div></div>
+   <h2 style="margin-top:14px">Pending orders</h2><div id="pendingOrders" class="tablewrap"><div class="empty">No pending orders.</div></div>
+  </aside>
+ </div>
+ <div class="panel">
+  <h2>Recent virtual fills</h2><div id="tradeHistory" class="tablewrap"><div class="empty">No simulated trades yet.</div></div>
+ </div>
+</section>
+<section class="view" data-view="performance" id="performance" hidden>
+ <div class="grid2">
+  <div class="panel">
+   <h2>Shared performance</h2>
+   <div class="accountbar">
+    <div class="stat"><small>Unrealized P/L</small><strong id="unrealized">$0.00</strong></div><div class="stat"><small>Closed trades</small><strong id="closedTrades">0</strong></div>
+    <div class="stat"><small>Win rate</small><strong id="winRate">—</strong></div><div class="stat"><small>Predictions played</small><strong id="predictionsPlayed">0</strong></div>
+   </div>
+   <div id="concentration" class="feedback">Risk check: no open positions.</div>
+   <p class="small" id="seasonLabel">Achievement season</p>
+  </div>
+  <div class="panel">
+   <h2>Trader progression</h2>
+   <div class="badges" id="badges"></div>
+  </div>
+ </div>
+ <div class="panel">
+  <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><h2>Account controls</h2><p class="small">This shared practice account is saved in this browser on this device. It is not yet synced across devices.</p></div><button class="btn danger" id="resetAccount">Reset virtual account</button></div>
+ </div>
+</section>
+<footer>
+ RO’Lyfe Trading Arena · Data: Tickerbot historical OHLCV and Finnhub quote responses through the existing Supabase market-data function. Quote timing and data coverage depend on provider entitlements. Paper orders, fills, P/L and achievements are simulated. No real orders, brokerage connection, or investment advice.
+</footer>
 </main>
 <script>
-const scenarios=[
-{symbol:"ROLY · Momentum Setup",start:42.2,visible:[.3,.45,.2,-.1,.25,.35,.1,.42,.28,-.05,.3,.38,.2,.44,.32,.1,.4,.35],future:[.42,.38,.55],explain:"The sequence continued higher: higher closes and sustained upward pressure carried into the reveal window."},
-{symbol:"ROLY · Failed Breakout",start:58.4,visible:[.4,.35,.2,.3,.45,.2,.5,.3,.15,.4,.25,.3,.12,.38,.22,.1,.28,.16],future:[-.32,-.48,-.4],explain:"The breakout attempt failed. Follow-through faded and sellers took control during the reveal window."},
-{symbol:"ROLY · Tight Consolidation",start:31.8,visible:[.18,-.12,.1,-.16,.12,.08,-.1,.14,-.12,.1,-.08,.13,-.1,.08,-.06,.1,-.08,.05],future:[.06,-.04,.03],explain:"Price stayed compressed. The reveal was rotational rather than a meaningful directional expansion."},
-{symbol:"ROLY · Trend Reversal",start:76.5,visible:[-.35,-.3,-.4,-.18,-.32,-.25,-.15,-.38,-.22,-.3,-.1,-.25,-.18,-.08,.02,.18,.25,.32],future:[.45,.42,.5],explain:"Selling pressure weakened and buyers began producing stronger closes. The reversal gained follow-through."},
-{symbol:"ROLY · Downtrend Continuation",start:64.1,visible:[-.18,-.28,-.22,-.35,-.1,-.3,-.26,-.4,-.2,-.3,-.18,-.38,-.22,-.28,-.15,-.32,-.2,-.3],future:[-.42,-.35,-.52],explain:"Lower closes and weak rebounds persisted. Sellers maintained control through the reveal window."}
-];
-let round=0,score=0,correct=0,played=0,streak=0,pick=null,revealed=false,candles=[];
-const el=id=>document.getElementById(id);
-function buildBars(s){let p=s.start;const make=delta=>{const open=p,close=p+delta,wick=.08+Math.abs(delta)*.22;p=close;return{open,close,high:Math.max(open,close)+wick,low:Math.min(open,close)-wick};};return{visible:s.visible.map(make),future:s.future.map(make)};}
-function classify(bars){const pct=(bars[bars.length-1].close/bars[0].open-1)*100;return pct>.35?"bullish":pct<-.35?"bearish":"sideways";}
-function render(){const shown=revealed?candles.visible.concat(candles.future):candles.visible,all=candles.visible.concat(candles.future),lo=Math.min(...all.map(c=>c.low)),hi=Math.max(...all.map(c=>c.high)),pad=(hi-lo)*.12||1,min=lo-pad,max=hi+pad,left=44,right=744,top=20,bottom=286,step=(right-left)/shown.length,scale=v=>bottom-(v-min)/(max-min)*(bottom-top);let svg="";for(let i=0;i<5;i++){const y=top+i*(bottom-top)/4,val=max-i*(max-min)/4;svg+='<line class="gridline" x1="'+left+'" y1="'+y+'" x2="'+right+'" y2="'+y+'"/><text class="axis" x="4" y="'+(y+4)+'">'+val.toFixed(2)+'</text>';}shown.forEach((c,i)=>{const x=left+step*(i+.5),w=Math.max(5,step*.52),cl=c.close>=c.open?"up":"down";svg+='<line class="wick '+cl+'" x1="'+x+'" y1="'+scale(c.high)+'" x2="'+x+'" y2="'+scale(c.low)+'"/><rect class="'+cl+'" x="'+(x-w/2)+'" y="'+Math.min(scale(c.open),scale(c.close))+'" width="'+w+'" height="'+Math.max(2,Math.abs(scale(c.open)-scale(c.close)))+'" rx="1"/>';});svg+='<text class="axis" x="'+left+'" y="315">Earlier</text><text class="axis" x="'+(right-48)+'" y="315">Latest</text>';if(!revealed){const x=left+step*candles.visible.length;svg+='<line x1="'+x+'" y1="'+top+'" x2="'+x+'" y2="'+bottom+'" stroke="#f5cc78" stroke-dasharray="5 5"/><text x="'+Math.min(x+5,650)+'" y="14" fill="#f5cc78" font-size="10">REVEAL ZONE</text>';}el("chart").innerHTML=svg;el("priceLabel").textContent="Last close "+candles.visible[candles.visible.length-1].close.toFixed(2);el("chartMeta").textContent=revealed?"15-minute candles · reveal complete":"15-minute candles · 18 bars shown";}
-function load(){const s=scenarios[round%scenarios.length];candles=buildBars(s);pick=null;revealed=false;el("round").textContent=round+1;el("symbol").textContent=s.symbol;document.querySelectorAll(".choice").forEach(b=>b.classList.remove("selected"));el("reveal").disabled=true;el("next").disabled=true;el("feedback").className="feedback";el("feedback").textContent="Choose Bullish, Sideways, or Bearish. Your call is locked before the next candles appear.";render();}
-document.querySelectorAll(".choice").forEach(b=>b.addEventListener("click",()=>{if(revealed)return;pick=b.dataset.pick;document.querySelectorAll(".choice").forEach(x=>x.classList.toggle("selected",x===b));el("reveal").disabled=false;}));
-el("reveal").addEventListener("click",()=>{if(!pick||revealed)return;revealed=true;played++;const actual=classify(candles.future),ok=pick===actual,pct=(candles.future[2].close/candles.future[0].open-1)*100;if(ok){score+=100;correct++;streak++;}else streak=0;el("score").textContent=score;el("correct").textContent=correct;el("accuracy").textContent=Math.round(correct/played*100)+"%";el("streak").textContent=streak;render();el("feedback").className="feedback "+(ok?"good":"bad");el("feedback").textContent=(ok?"✓ Correct call · +100 points. ":"Not this time · 0 points. ")+"Your call: "+pick.toUpperCase()+" · Actual move: "+actual.toUpperCase()+" ("+(pct>=0?"+":"")+pct.toFixed(2)+"%). "+scenarios[round%scenarios.length].explain;el("next").disabled=false;el("reveal").disabled=true;});
-el("next").addEventListener("click",()=>{round++;load();});
-el("reset").addEventListener("click",()=>{round=score=correct=played=streak=0;el("score").textContent="0";el("correct").textContent="0";el("accuracy").textContent="—";el("streak").textContent="0";load();});
-load();
-</script></body></html>
+(() => {
+'use strict';
+const SUPABASE_URL = 'https://ykmdyfbklvuoseqdjnxy.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_FaJPNdtRsZTemxpbp98F2g_U9ngkFaG';
+const FUNCTION_URL = SUPABASE_URL + '/functions/v1/market-data';
+const ACCOUNT_KEY = 'rolyfe.pro.virtual-account.v1';
+const STARTING_CASH = 10000;
+const DEFAULT_SLIPPAGE_BPS = 5;
+const $ = (id) => document.getElementById(id);
+const money = (n) => Number(n || 0).toLocaleString('en-US',{style:'currency',currency:'USD'});
+const number = (n,d=2) => Number(n || 0).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const timeLabel = (value) => {
+ if (!value) return 'Timestamp unavailable';
+ const date = value instanceof Date ? value : new Date(value);
+ if (!Number.isFinite(date.getTime())) return 'Timestamp unavailable';
+ return date.toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'});
+};
+const toMillis = (value) => {
+ if (value === null || value === undefined || value === '') return null;
+ if (typeof value === 'number' || /^\d+(\.\d+)?$/.test(String(value))) {
+  const n = Number(value);
+  return n < 100000000000 ? n * 1000 : n;
+ }
+ const parsed = Date.parse(value);
+ return Number.isFinite(parsed) ? parsed : null;
+};
+const defaultAccount = () => ({version:1,cash:STARTING_CASH,positions:{},trades:[],pending:[],predictions:[],game:{score:0,correct:0,played:0,streak:0,bestStreak:0},updatedAt:Date.now()});
+function loadAccount(){
+ try{
+  const raw = localStorage.getItem(ACCOUNT_KEY);
+  if(!raw)return defaultAccount();
+  const saved = JSON.parse(raw);
+  const base = defaultAccount();
+  return {...base,...saved,positions:saved.positions||{},trades:Array.isArray(saved.trades)?saved.trades:[],pending:Array.isArray(saved.pending)?saved.pending:[],predictions:Array.isArray(saved.predictions)?saved.predictions:[],game:{...base.game,...(saved.game||{})}};
+ }catch{return defaultAccount();}
+}
+let account = loadAccount();
+let bars = [];
+let barsMeta = null;
+let quote = null;
+let quoteSymbol = '';
+let gameRound = null;
+let selectedPick = null;
+let currentTab = 'wars';
+let loading = false;
+function saveAccount(){
+ account.updatedAt = Date.now();
+ try{localStorage.setItem(ACCOUNT_KEY,JSON.stringify(account));}
+ catch{setText('orderFeedback','Browser storage is full or unavailable; this change may not persist.');}
+ renderAccount();
+}
+function setText(id,value){const el=$(id);if(el)el.textContent=String(value);}
+function symbolValue(){return $('symbol').value.trim().toUpperCase();}
+function intervalValue(){return $('interval').value;}
+async function callMarketData(params){
+ const url = new URL(FUNCTION_URL);
+ Object.entries(params).forEach(([key,value])=>url.searchParams.set(key,String(value)));
+ const response = await fetch(url.toString(),{method:'GET',headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Accept:'application/json'}});
+ let payload;
+ try{payload=await response.json();}catch{throw new Error('Market-data service returned an unreadable response.');}
+ if(!response.ok)throw new Error(payload.error || ('Market-data request failed ('+response.status+').'));
+ return payload;
+}
+function normalizeBars(rows){
+ const result = [];
+ for(const row of rows||[]){
+  const timestamp = toMillis(row.t ?? row.timestamp ?? row.time ?? row.datetime ?? row.date);
+  const open = Number(row.o ?? row.open), high = Number(row.h ?? row.high), low = Number(row.l ?? row.low), close = Number(row.c ?? row.close);
+  const volume = Number(row.v ?? row.volume ?? row.vol ?? 0);
+  if(![open,high,low,close].every(Number.isFinite) || open<=0 || high<=0 || low<=0 || close<=0)continue;
+  result.push({time:timestamp,open,high,low,close,volume:Number.isFinite(volume)?volume:0});
+ }
+ result.sort((a,b)=>(a.time||0)-(b.time||0));
+ return result.filter((bar,index)=>!index || bar.time!==result[index-1].time);
+}
+async function fetchBars(symbol,interval,session){
+ const payload = await callMarketData({provider:'tickerbot',symbol,interval,limit:500,session});
+ if(!Array.isArray(payload.bars))throw new Error(payload.error || 'Tickerbot did not return a bars array.');
+ const normalized = normalizeBars(payload.bars);
+ if(normalized.length<30)throw new Error('Only '+normalized.length+' valid candles returned. At least 30 are needed for replay and indicators.');
+ return {bars:normalized,meta:{provider:payload.provider||'tickerbot',asOf:payload.asOf||null,coverage:payload.coverage||'not supplied',adjusted:payload.adjusted,session:payload.session||session}};
+}
+async function fetchQuote(symbol){
+ const payload = await callMarketData({provider:'finnhub',symbol});
+ const price = Number(payload.price);
+ if(!Number.isFinite(price)||price<=0)throw new Error(payload.error||'Finnhub returned no usable quote.');
+ return {symbol:payload.symbol||symbol,price,timestamp:toMillis(payload.timestamp),provider:payload.provider||'finnhub',changePercent:payload.changePercent};
+}
+function ema(values,period){
+ if(!values.length)return [];
+ const k=2/(period+1),out=[values[0]];
+ for(let i=1;i<values.length;i++)out.push(values[i]*k+out[i-1]*(1-k));
+ return out;
+}
+function rsi(values,period=14){
+ if(values.length<=period)return null;
+ let gains=0,losses=0;
+ for(let i=values.length-period;i<values.length;i++){
+  const delta=values[i]-values[i-1];
+  if(delta>0)gains+=delta;else losses-=delta;
+ }
+ if(losses===0)return 100;
+ const rs=(gains/period)/(losses/period);
+ return 100-(100/(1+rs));
+}
+function macd(values){
+ if(values.length<35)return null;
+ const fast=ema(values,12),slow=ema(values,26);
+ const line=values.map((_,i)=>fast[i]-slow[i]);
+ const signal=ema(line,9);
+ return {line:line[line.length-1],signal:signal[signal.length-1],hist:line[line.length-1]-signal[signal.length-1]};
+}
+function calcIndicators(series){
+ const closes=series.map(x=>x.close);
+ return {ema20:ema(closes,20).at(-1),ema50:ema(closes,50).at(-1),rsi:rsi(closes),macd:macd(closes)};
+}
+function renderIndicators(series){
+ const values=calcIndicators(series);
+ setText('ema20',Number.isFinite(values.ema20)?number(values.ema20):'—');
+ setText('ema50',Number.isFinite(values.ema50)?number(values.ema50):'—');
+ setText('rsi',Number.isFinite(values.rsi)?number(values.rsi,1):'—');
+ setText('macd',values.macd?number(values.macd.hist,3):'—');
+}
+function renderChart(series,hiddenCount=0){
+ const svg=$('chart');
+ if(!series.length){svg.innerHTML='<text x="30" y="55" fill="#8ea5b9" font-size="14">No candles to display.</text>';return;}
+ const visible=series.slice(-80),closes=visible.map(x=>x.close);
+ const highs=visible.map(x=>x.high),lows=visible.map(x=>x.low);
+ const hi=Math.max(...highs),lo=Math.min(...lows),pad=(hi-lo)*.1||Math.max(hi*.01,.01);
+ const min=lo-pad,max=hi+pad,left=58,right=880,top=22,priceBottom=288,volTop=320,volBottom=398;
+ const count=visible.length+hiddenCount,step=(right-left)/count;
+ const y=(v)=>priceBottom-(v-min)/(max-min)*(priceBottom-top);
+ const maxVol=Math.max(1,...visible.map(x=>x.volume));
+ let out='';
+ for(let i=0;i<5;i++){
+  const gy=top+i*(priceBottom-top)/4,val=max-i*(max-min)/4;
+  out+='<line class="gridline" x1="'+left+'" y1="'+gy+'" x2="'+right+'" y2="'+gy+'"/><text class="axis" x="5" y="'+(gy+4)+'">'+number(val)+'</text>';
+ }
+ visible.forEach((c,i)=>{
+  const x=left+step*(i+.5),w=Math.max(3.2,Math.min(10,step*.58)),klass=c.close>=c.open?'up':'down';
+  out+='<line class="wick '+klass+'" x1="'+x+'" y1="'+y(c.high)+'" x2="'+x+'" y2="'+y(c.low)+'"/>';
+  out+='<rect class="'+klass+'" x="'+(x-w/2)+'" y="'+Math.min(y(c.open),y(c.close))+'" width="'+w+'" height="'+Math.max(1.5,Math.abs(y(c.open)-y(c.close)))+'" rx="1"/>';
+  const vh=c.volume/maxVol*(volBottom-volTop);
+  out+='<rect class="'+(klass==='up'?'volumeUp':'volumeDown')+'" x="'+(x-w/2)+'" y="'+(volBottom-vh)+'" width="'+w+'" height="'+Math.max(1,vh)+'"/>';
+ });
+ const values=visible.map(x=>x.close),e20=ema(values,20),e50=ema(values,50);
+ const makePath=(array)=>array.map((v,i)=>(i?'L':'M')+(left+step*(i+.5))+','+y(v)).join(' ');
+ out+='<path class="ema20" d="'+makePath(e20)+'"/><path class="ema50" d="'+makePath(e50)+'"/>';
+ out+='<line class="gridline" x1="'+left+'" y1="'+(volTop-5)+'" x2="'+right+'" y2="'+(volTop-5)+'"/>';
+ out+='<text class="axis" x="'+left+'" y="419">'+(visible[0].time?timeLabel(visible[0].time):'Earlier')+'</text>';
+ out+='<text class="axis" x="'+Math.max(left+10,right-135)+'" y="419">'+(visible[visible.length-1].time?timeLabel(visible[visible.length-1].time):'Latest')+'</text>';
+ if(hiddenCount){
+  const x=left+step*visible.length;
+  out+='<line x1="'+x+'" y1="'+top+'" x2="'+x+'" y2="'+volBottom+'" stroke="#f5cc78" stroke-dasharray="5 5"/><text x="'+Math.min(x+5,760)+'" y="15" fill="#f5cc78" font-size="10">HIDDEN FUTURE</text>';
+ }
+ out+='<text class="axis" x="'+left+'" y="'+(volTop-10)+'">VOLUME</text>';
+ svg.innerHTML=out;
+}
+function setBarsStatus(text,kind='warn'){const el=$('barsStatus');el.textContent=text;el.className='pill '+kind;}
+function setQuoteStatus(text,kind='warn'){const el=$('quoteStatus');el.textContent=text;el.className='pill '+kind;}
+function updateHeaderMarket(){
+ const sym=symbolValue();
+ setText('chartTitle',sym+' · '+(bars.length?'Historical market chart':'Waiting for data'));
+ setText('chartSub',(barsMeta?.provider||'Tickerbot')+' historical OHLCV · '+intervalValue()+' · '+(barsMeta?.session||$('session').value)+' session');
+ if(bars.length)setText('lastPrice','Last close '+money(bars[bars.length-1].close));
+}
+function markSelectedPosition(){
+ const pos=account.positions[symbolValue()];
+ if(pos&&quote){pos.mark=quote.price;pos.markAt=quote.timestamp||Date.now();saveAccount();}
+}
+async function loadMarketData(){
+ if(loading)return;
+ const sym=symbolValue();
+ if(!/^[A-Z0-9.^_-]{1,15}$/.test(sym)){setText('dataStatus','Enter a valid stock or ETF ticker.');return;}
+ loading=true;$('loadData').disabled=true;$('loadData').textContent='Loading…';
+ setBarsStatus('FETCHING HISTORICAL BARS');setQuoteStatus('CHECKING PROVIDER QUOTE');
+ setText('dataStatus','Requesting real provider data. No generated fallback is used.');
+ quote=null;quoteSymbol=sym;setText('ticketQuote','—');setText('ticketQuoteTime','Loading quote…');
+ const interval=intervalValue(),session=$('session').value;
+ const results=await Promise.allSettled([fetchBars(sym,interval,session),fetchQuote(sym)]);
+ if(results[0].status==='fulfilled'){
+  bars=results[0].value.bars;barsMeta=results[0].value.meta;
+  setBarsStatus(bars.length+' HISTORICAL BARS · TICKERBOT','good');
+  const asOf=barsMeta.asOf?timeLabel(barsMeta.asOf):(bars[bars.length-1].time?timeLabel(bars[bars.length-1].time):'provider timestamp not supplied');
+  setText('dataStatus','Real historical candles · Tickerbot · '+bars.length+' valid bars · as of '+asOf+' · coverage '+barsMeta.coverage+'.');
+  updateHeaderMarket();renderChart(bars.slice(-80));renderIndicators(bars);startGameRound();
+ }else{
+  bars=[];barsMeta=null;gameRound=null;setBarsStatus('HISTORICAL DATA UNAVAILABLE','error');
+  setText('dataStatus',results[0].reason?.message||'Historical market data could not be loaded.');
+  $('chart').innerHTML='<text x="30" y="55" fill="#ffb2b7" font-size="14">Historical provider data unavailable. Check the data status and try again.</text>';
+ }
+ if(results[1].status==='fulfilled'){
+  quote=results[1].value;quoteSymbol=sym;
+  const age=quote.timestamp?Date.now()-quote.timestamp:null;
+  setQuoteStatus(age!==null&&age>=0&&age<=300000?'RECENT FINNHUB QUOTE':'FINNHUB QUOTE · CHECK TIMESTAMP',age!==null&&age>=0&&age<=300000?'good':'warn');
+  setText('ticketQuote',money(quote.price));
+  setText('ticketQuoteTime',quote.timestamp?timeLabel(quote.timestamp):'Provider timestamp unavailable');
+  markSelectedPosition();processPendingOrders();
+ }else{
+  quote=null;setQuoteStatus('QUOTE UNAVAILABLE','error');
+  setText('ticketQuote','—');setText('ticketQuoteTime',results[1].reason?.message||'No provider quote');
+ }
+ loading=false;$('loadData').disabled=false;$('loadData').textContent='Refresh real market data';
+ renderAccount();renderTradingTables();
+}
+function startGameRound(){
+ if(bars.length<30){gameRound=null;setText('gameFeedback','Need more historical bars before starting a round.');return;}
+ const visibleCount=24,maxStart=bars.length-3;
+ const endIndex=Math.min(maxStart,Math.max(visibleCount,Math.floor(visibleCount+Math.random()*(maxStart-visibleCount+1))));
+ const visible=bars.slice(endIndex-visibleCount,endIndex);
+ const future=bars.slice(endIndex,endIndex+3);
+ if(visible.length<visibleCount||future.length<3){gameRound=null;return;}
+ gameRound={visible,future,revealed:false};
+ selectedPick=null;
+ document.querySelectorAll('.choice').forEach(x=>x.classList.remove('selected'));
+ $('lockReveal').disabled=true;$('nextRound').disabled=true;
+ setText('roundLabel','ROUND '+(account.game.played+1));
+ setText('gameFeedback','Study '+visible.length+' historical candles. Choose the direction of the next three candles.');
+ renderChart(visible,3);
+}
+function classifyFuture(round){
+ const base=round.visible[round.visible.length-1].close;
+ const last=round.future[round.future.length-1].close;
+ const pct=(last/base-1)*100;
+ return {direction:pct>0.2?'bullish':pct<-.2?'bearish':'sideways',pct};
+}
+document.querySelectorAll('.choice').forEach(button=>button.addEventListener('click',()=>{
+ if(!gameRound||gameRound.revealed)return;
+ selectedPick=button.dataset.pick;
+ document.querySelectorAll('.choice').forEach(x=>x.classList.toggle('selected',x===button));
+ $('lockReveal').disabled=false;
+}));
+$('lockReveal').addEventListener('click',()=>{
+ if(!gameRound||!selectedPick||gameRound.revealed)return;
+ const outcome=classifyFuture(gameRound),correct=selectedPick===outcome.direction;
+ gameRound.revealed=true;account.game.played+=1;
+ if(correct){account.game.correct+=1;account.game.score+=100;account.game.streak+=1;account.game.bestStreak=Math.max(account.game.bestStreak,account.game.streak);}
+ else account.game.streak=0;
+ account.predictions.push({at:Date.now(),symbol:symbolValue(),interval:intervalValue(),pick:selectedPick,actual:outcome.direction,correct,pct:outcome.pct});
+ account.predictions=account.predictions.slice(-500);
+ saveAccount();
+ renderChart(gameRound.visible.concat(gameRound.future));
+ $('lockReveal').disabled=true;$('nextRound').disabled=false;
+ const line=(correct?'Correct call · +100 points. ':'Not this time · 0 points. ')+'You chose '+selectedPick.toUpperCase()+'. The next three historical bars were '+outcome.direction.toUpperCase()+' ('+(outcome.pct>=0?'+':'')+number(outcome.pct,2)+'%).';
+ $('gameFeedback').textContent=line;$('gameFeedback').className='feedback '+(correct?'good':'bad');
+});
+$('nextRound').addEventListener('click',startGameRound);
+function portfolioValues(){
+ let marketValue=0,unrealized=0;
+ Object.values(account.positions).forEach(pos=>{
+  const mark=Number(pos.mark)>0?Number(pos.mark):Number(pos.avgCost);
+  marketValue+=pos.quantity*mark;
+  unrealized+=(mark-pos.avgCost)*pos.quantity;
+ });
+ const realized=account.trades.reduce((sum,t)=>sum+(Number(t.realizedPnl)||0),0);
+ return {equity:account.cash+marketValue,marketValue,unrealized,realized};
+}
+function renderAccount(){
+ const v=portfolioValues();
+ setText('equity',money(v.equity));setText('cash',money(account.cash));setText('realized',money(v.realized));setText('gameScore',account.game.score);
+ setText('correctCalls',account.game.correct);setText('accuracy',account.game.played?Math.round(account.game.correct/account.game.played*100)+'%':'—');
+ setText('streak',account.game.streak);setText('bestStreak',account.game.bestStreak);
+ setText('unrealized',money(v.unrealized));
+ const realizedEl=$('realized'),unrealizedEl=$('unrealized');
+ realizedEl.className=v.realized>=0?'positive':'negative';unrealizedEl.className=v.unrealized>=0?'positive':'negative';
+ const closed=account.trades.filter(t=>t.side==='sell');
+ const wins=closed.filter(t=>t.realizedPnl>0).length;
+ setText('closedTrades',closed.length);setText('winRate',closed.length?Math.round(wins/closed.length*100)+'%':'—');setText('predictionsPlayed',account.game.played);
+ const concentrations=Object.values(account.positions).map(pos=>({symbol:pos.symbol,pct:v.equity>0?(pos.quantity*(pos.mark||pos.avgCost))/v.equity*100:0})).sort((a,b)=>b.pct-a.pct);
+ const biggest=concentrations[0];
+ const concentration=$('concentration');
+ if(biggest&&biggest.pct>25){concentration.className='feedback bad';concentration.textContent='Gambler Check: '+biggest.symbol+' represents '+number(biggest.pct,1)+'% of virtual equity. Concentration is a risk warning, not an achievement.';}
+ else{concentration.className='feedback';concentration.textContent=biggest?'Risk check: largest position is '+biggest.symbol+' at '+number(biggest.pct,1)+'% of virtual equity.':'Risk check: no open positions.';}
+ renderBadges(closed,wins);
+}
+function renderBadges(closed,wins){
+ const acc=account.game.played?account.game.correct/account.game.played:0;
+ const oldHeld=account.trades.some(t=>t.holdMs>=86400000);
+ const list=[
+  {name:'Marksman',desc:'10+ chart calls with at least 70% accuracy.',earned:account.game.played>=10&&acc>=.7},
+  {name:'Swing Trader',desc:'Hold a virtual position for at least one full day.',earned:oldHeld},
+  {name:'Money Maker',desc:'Positive realized P/L after at least 5 closed trades.',earned:closed.length>=5&&account.trades.reduce((s,t)=>s+(t.realizedPnl||0),0)>0},
+  {name:'I Know What I’m Doing',desc:'10+ closed trades with at least a 60% win rate.',earned:closed.length>=10&&wins/closed.length>=.6}
+ ];
+ $('badges').innerHTML='';
+ list.forEach(item=>{
+  const card=document.createElement('div');card.className='badgecard'+(item.earned?' earned':'');
+  const title=document.createElement('strong');title.textContent=(item.earned?'★ ':'○ ')+item.name;
+  const desc=document.createElement('small');desc.textContent=item.desc;
+  card.append(title,desc);$('badges').append(card);
+ });
+ const month=new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'});
+ setText('seasonLabel','Progress period: '+month+' · achievement progress is based on this shared device-local account.');
+}
+function renderTradingTables(){
+ const keys=Object.keys(account.positions);
+ if(!keys.length){$('positions').innerHTML='<div class="empty">No open positions yet.</div>';}
+ else{
+  const table=document.createElement('table');
+  table.innerHTML='<thead><tr><th>Symbol</th><th>Shares</th><th>Avg cost</th><th>Mark</th><th>Unrealized P/L</th></tr></thead>';
+  const body=document.createElement('tbody');
+  keys.forEach(key=>{
+   const p=account.positions[key],mark=p.mark||p.avgCost,pnl=(mark-p.avgCost)*p.quantity,tr=document.createElement('tr');
+   [p.symbol,String(p.quantity),money(p.avgCost),money(mark),money(pnl)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td);});
+   body.append(tr);
+  });table.append(body);$('positions').replaceChildren(table);
+ }
+ if(!account.pending.length){$('pendingOrders').innerHTML='<div class="empty">No pending orders.</div>';}
+ else{
+  const table=document.createElement('table');table.innerHTML='<thead><tr><th>Symbol</th><th>Side</th><th>Type</th><th>Shares</th><th>Trigger</th><th></th></tr></thead>';
+  const body=document.createElement('tbody');
+  account.pending.forEach(order=>{
+   const tr=document.createElement('tr');
+   [order.symbol,order.side.toUpperCase(),order.type.toUpperCase(),String(order.quantity),money(order.triggerPrice)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td);});
+   const action=document.createElement('td'),cancel=document.createElement('button');cancel.className='btn danger';cancel.textContent='Cancel';
+   cancel.addEventListener('click',()=>{account.pending=account.pending.filter(x=>x.id!==order.id);saveAccount();renderTradingTables();});
+   action.append(cancel);tr.append(action);body.append(tr);
+  });table.append(body);$('pendingOrders').replaceChildren(table);
+ }
+ const recent=account.trades.slice(-12).reverse();
+ if(!recent.length){$('tradeHistory').innerHTML='<div class="empty">No simulated trades yet.</div>';}
+ else{
+  const table=document.createElement('table');table.innerHTML='<thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Shares</th><th>Virtual fill</th><th>Reference</th><th>Realized P/L</th></tr></thead>';
+  const body=document.createElement('tbody');
+  recent.forEach(t=>{
+   const tr=document.createElement('tr');
+   [timeLabel(t.at),t.symbol,t.side.toUpperCase(),String(t.quantity),money(t.fillPrice),money(t.referencePrice),t.side==='sell'?money(t.realizedPnl):'—'].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td);});
+   body.append(tr);
+  });table.append(body);$('tradeHistory').replaceChildren(table);
+ }
+}
+function setOrderFeedback(message,kind=''){const el=$('orderFeedback');el.textContent=message;el.className='feedback'+(kind?' '+kind:'');}
+function fillOrder(order,referencePrice,fillPrice,sourceTimestamp){
+ const fee=0,notional=fillPrice*order.quantity;
+ const position=account.positions[order.symbol];
+ if(order.side==='buy'){
+  if(notional+fee>account.cash){setOrderFeedback('Insufficient virtual cash. Reduce the share quantity or reset the practice account.','bad');return false;}
+  const oldQty=position?.quantity||0,oldCost=position?.avgCost||0,newQty=oldQty+order.quantity;
+  account.cash-=notional+fee;
+  account.positions[order.symbol]={symbol:order.symbol,quantity:newQty,avgCost:((oldQty*oldCost)+notional+fee)/newQty,mark:quote?.symbol===order.symbol?quote.price:(position?.mark||fillPrice),markAt:sourceTimestamp||Date.now(),openedAt:position?.openedAt||Date.now()};
+ }else{
+  if(!position||position.quantity<order.quantity){setOrderFeedback('Sell order not filled: the virtual account does not hold enough shares.','bad');return false;}
+  const realized=(fillPrice-position.avgCost)*order.quantity-fee;
+  account.cash+=notional-fee;
+  position.quantity-=order.quantity;position.mark=quote?.symbol===order.symbol?quote.price:fillPrice;position.markAt=sourceTimestamp||Date.now();
+  if(position.quantity===0)delete account.positions[order.symbol];
+  order.realizedPnl=realized;
+ }
+ const completed={id:order.id,at:Date.now(),symbol:order.symbol,side:order.side,quantity:order.quantity,fillPrice,referencePrice,fee,slippageBps:order.slippageBps||0,realizedPnl:order.realizedPnl||0,holdMs:order.side==='sell'&&position?Date.now()-position.openedAt:0,sourceTimestamp:sourceTimestamp||null,type:order.type};
+ account.trades.push(completed);account.trades=account.trades.slice(-500);
+ saveAccount();renderTradingTables();renderAccount();
+ setOrderFeedback(order.side.toUpperCase()+' '+order.quantity+' '+order.symbol+' paper-filled at '+money(fillPrice)+' against reference '+money(referencePrice)+'. No broker order was sent.','good');
+ return true;
+}
+function orderTriggered(order,price){
+ if(order.type==='limit')return order.side==='buy'?price<=order.triggerPrice:price>=order.triggerPrice;
+ if(order.type==='stop')return order.side==='buy'?price>=order.triggerPrice:price<=order.triggerPrice;
+ return true;
+}
+function processPendingOrders(){
+ if(!quote||quote.symbol!==symbolValue())return;
+ const keep=[];
+ for(const order of account.pending){
+  if(order.symbol!==quote.symbol||!orderTriggered(order,quote.price)){keep.push(order);continue;}
+  const fillPrice=order.type==='limit'?order.triggerPrice:quote.price*(1+(order.side==='buy'?1:-1)*(order.slippageBps||DEFAULT_SLIPPAGE_BPS)/10000);
+  if(!fillOrder(order,quote.price,fillPrice,quote.timestamp)){keep.push(order);}
+ }
+ account.pending=keep;saveAccount();renderTradingTables();
+}
+$('orderType').addEventListener('change',()=>{$('triggerField').hidden=$('orderType').value==='market';});
+$('placeOrder').addEventListener('click',()=>{
+ const sym=symbolValue(),side=$('side').value,type=$('orderType').value,qty=Number($('quantity').value),slippage=Number($('slippage').value);
+ if(!Number.isInteger(qty)||qty<1||qty>100000){setOrderFeedback('Share quantity must be a whole number between 1 and 100,000.','bad');return;}
+ if(!Number.isFinite(slippage)||slippage<0||slippage>100){setOrderFeedback('Slippage must be between 0 and 100 basis points.','bad');return;}
+ const order={id:Date.now()+'-'+Math.random().toString(36).slice(2,8),symbol:sym,side,type,quantity:qty,slippageBps:slippage,createdAt:Date.now()};
+ if(type!=='market'){
+  const trigger=Number($('triggerPrice').value);
+  if(!Number.isFinite(trigger)||trigger<=0){setOrderFeedback('Enter a valid positive limit or stop trigger price.','bad');return;}
+  order.triggerPrice=trigger;
+  account.pending.push(order);saveAccount();renderTradingTables();
+  setOrderFeedback(type.toUpperCase()+' order saved as pending. Refresh this ticker’s quote to evaluate the trigger.','good');return;
+ }
+ if(!quote||quote.symbol!==sym){setOrderFeedback('Load a current provider quote for '+sym+' before placing a paper market order.','bad');return;}
+ const fill=quote.price*(1+(side==='buy'?1:-1)*slippage/10000);
+ fillOrder(order,quote.price,fill,quote.timestamp);
+});
+async function refreshQuoteAndOrders(){
+ const sym=symbolValue();
+ try{
+  const fresh=await fetchQuote(sym);quote=fresh;quoteSymbol=sym;
+  const age=quote.timestamp?Date.now()-quote.timestamp:null;
+  setQuoteStatus(age!==null&&age>=0&&age<=300000?'RECENT FINNHUB QUOTE':'FINNHUB QUOTE · CHECK TIMESTAMP',age!==null&&age>=0&&age<=300000?'good':'warn');
+  setText('ticketQuote',money(quote.price));setText('ticketQuoteTime',quote.timestamp?timeLabel(quote.timestamp):'Provider timestamp unavailable');
+  markSelectedPosition();processPendingOrders();
+  setOrderFeedback('Quote refreshed from Finnhub at '+(quote.timestamp?timeLabel(quote.timestamp):'an unavailable provider timestamp')+'. Pending orders were checked against this reference.','good');
+ }catch(error){setOrderFeedback(error.message||'Quote refresh failed.','bad');}
+}
+$('refreshQuote').addEventListener('click',refreshQuoteAndOrders);
+$('loadData').addEventListener('click',loadMarketData);
+$('symbol').addEventListener('change',()=>{bars=[];barsMeta=null;quote=null;gameRound=null;setBarsStatus('MARKET HISTORY NOT LOADED');setQuoteStatus('QUOTE NOT CHECKED');setText('dataStatus','Ticker changed. Load provider data for the new symbol.');setText('chartTitle',symbolValue()+' · Waiting for data');});
+function setTab(tab){
+ currentTab=tab;
+ document.querySelectorAll('[data-view]').forEach(view=>{view.hidden=view.dataset.view!==tab;});
+ document.querySelectorAll('.tab').forEach(button=>button.classList.toggle('active',button.dataset.tab===tab));
+ if(tab==='simulator')renderTradingTables();
+ if(tab==='performance')renderAccount();
+}
+document.querySelectorAll('.tab').forEach(button=>button.addEventListener('click',()=>{
+ setTab(button.dataset.tab);
+ if(history.replaceState)history.replaceState(null,'','#'+button.dataset.tab);
+}));
+function hashTab(){
+ const h=location.hash.replace('#','');
+ if(['wars','simulator','performance'].includes(h))setTab(h);
+}
+window.addEventListener('hashchange',hashTab);
+$('resetAccount').addEventListener('click',()=>{
+ if(!window.confirm('Reset the shared $10,000 virtual account, positions, paper fills, pending orders, scores and achievements on this browser?'))return;
+ account=defaultAccount();saveAccount();renderTradingTables();setText('gameFeedback','Virtual account reset. Load historical candles to start again.');
+});
+renderAccount();renderTradingTables();hashTab();
+})();
+</script>
+</body>
+</html>
