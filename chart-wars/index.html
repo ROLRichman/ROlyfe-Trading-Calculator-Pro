@@ -176,19 +176,18 @@ h2{color:#b8f0d5}
  <div class="chart-head"><div><div class="symbol" id="chartTitle">AAPL · Waiting for data</div><div class="sub" id="chartSub">Tickerbot historical OHLCV · selected timeframe</div></div><div class="sub" id="lastPrice">Last close —</div></div>
  <div class="chart-tools" aria-label="Chart controls">
   <span class="tool-label">CHART SIZE</span>
-  <button class="btn" data-chart-size="compact">Compact</button><button class="btn active" data-chart-size="standard">Standard</button><button class="btn" data-chart-size="large">Large</button><button class="btn" id="chartFullscreen">Full screen</button>
-  <span class="tool-label">ZOOM</span><button class="btn" id="zoomIn" aria-label="Zoom in">＋</button><button class="btn" id="zoomOut" aria-label="Zoom out">－</button><button class="btn" id="fitChart">Fit</button>
+  <button class="btn" data-chart-size="compact">Compact</button><button class="btn active" data-chart-size="standard">Standard</button><button class="btn" data-chart-size="large">Large</button><button class="btn" id="chartFullscreen">Full screen</button>  <span class="tool-label">ZOOM</span><button class="btn" id="zoomIn" aria-label="Zoom in">＋</button><button class="btn" id="zoomOut" aria-label="Zoom out">－</button><button class="btn" id="fitChart">Fit</button>
  </div>
  <div class="replay-tools" aria-label="Historical candle replay controls"><button class="btn orange" id="prevCandle" disabled>← Previous</button><button class="btn orange" id="nextCandle" disabled>Next candle →</button><button class="btn" id="playCandles" disabled>▶ Play</button><button class="btn" id="pauseCandles" disabled>Ⅱ Pause</button><button class="btn" id="soundToggle" aria-pressed="false">🔇 Sound: Off</button><input id="historyScrub" type="range" min="0" max="0" value="0" disabled aria-label="Scrub historical candles"><span class="replay-label" id="historyPosition">History: —</span></div>
  <div class="chartwrap"><div id="chart" role="img" aria-label="Interactive historical stock candlestick chart">Load real market data to view candles.</div></div>
  <details class="indicator-tools"><summary>INDICATORS · Tap to expand / collapse</summary><div class="indicator-toggles">
-  <label class="indicator-toggle"><input type="checkbox" data-indicator="ema200"> EMA 200</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="ema200" checked> EMA 200</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="ema50" checked> EMA 50</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="ema20" checked> EMA 20</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="ema10"> EMA 10</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="ema5"> EMA 5</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="vwap"> VWAP</label>
-  <label class="indicator-toggle"><input type="checkbox" data-indicator="hma31"> HMA 31</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="hma31" checked> HMA 31</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="hma32"> HMA 32</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="rlband"> RL Pullback ATR</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="pps"> PPS-style arrows</label>
@@ -242,7 +241,7 @@ h2{color:#b8f0d5}
     <div class="field"><label for="orderType">ORDER TYPE</label><select id="orderType"><option value="market">Market</option><option value="limit">Limit</option><option value="stop">Stop</option></select></div>
     <div class="field" id="triggerField" hidden><label for="triggerPrice">LIMIT / STOP PRICE</label><input type="number" id="triggerPrice" min="0.01" step="0.01" placeholder="Enter trigger price"></div>
     <div class="field"><label for="slippage">SIMULATED SLIPPAGE (BPS)</label><input type="number" id="slippage" min="0" max="100" step="1" value="5"></div>
-    <div class="field"><label>REFERENCE QUOTE</label><div class="stat"><strong id="ticketQuote">—</strong><small id="ticketQuoteTime">Load a quote</small></div></div>
+    <div class="field"><label>FINNHUB REFERENCE QUOTE</label><div class="stat"><strong id="ticketQuote">—</strong><small id="ticketQuoteTime">Load a quote</small></div></div>
    </div>
    <div class="actions" style="margin-top:10px"><button class="btn primary" id="placeOrder">Place paper order</button><button class="btn" id="refreshQuote">Refresh quote &amp; evaluate orders</button></div>
    <div class="feedback" id="orderFeedback" aria-live="polite">Market and triggered stop orders apply simulated slippage to the latest Finnhub reference quote. Limit orders fill at the better of the trigger or refreshed quote. No commission is modeled ($0 assumption).</div>
@@ -416,8 +415,7 @@ function addToWatchlist(symbol){
 function renderWatchlist(){
  const host=$('watchlistItems');if(!host)return;
  host.replaceChildren();setText('watchlistCount',watchlist.length+' SYMBOLS');
- if(!watchlist.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='Your watchlist is empty. Add a ticker or choose a scanner pick.';host.append(empty);return;}
- watchlist.forEach(sym=>{
+ if(!watchlist.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='Your watchlist is empty. Add a ticker or choose a scanner pick.';host.append(empty);return;} watchlist.forEach(sym=>{
   const item=document.createElement('div');item.className='watch-item';
   const open=document.createElement('button');open.className='watch-symbol';open.type='button';open.textContent=sym;open.setAttribute('aria-label','Load '+sym+' chart');open.addEventListener('click',()=>selectSymbol(sym));
   const remove=document.createElement('button');remove.className='watch-remove';remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove '+sym);remove.addEventListener('click',()=>{watchlist=watchlist.filter(x=>x!==sym);saveWatchlist();setText('watchlistStatus',sym+' removed.');});
@@ -535,7 +533,7 @@ function calcIndicators(series){
  const closes=series.map(x=>x.close);
  return {ema20:ema(closes,20).at(-1),ema50:ema(closes,50).at(-1),rsi:rsi(closes),macd:macd(closes)};
 }
-const chartState={chart:null,candle:null,volume:null,series:{},lastData:[]};
+const chartState={chart:null,candle:null,volume:null,series:{},lastData:[],quoteLine:null};
 const colors={ema200:'#f59e0b',ema50:'#f5cc78',ema20:'#80c7ff',ema10:'#d7a6ff',ema5:'#ff9d75',vwap:'#4dd0e1',hma31:'#d5e85b',hma32:'#ff8fc8',rl:'#a88cff'};
 const chosen=()=>Object.fromEntries([...document.querySelectorAll('[data-indicator]')].map(x=>[x.dataset.indicator,x.checked]));
 const sec=ms=>Math.floor(Number(ms)/1000);
@@ -575,10 +573,16 @@ function drawOscillators(rows,sel){
  Object.keys(sets).filter(k=>sel[k]).forEach(k=>{const [title,values,color,min,max]=sets[k],valid=values.filter(Number.isFinite);if(!valid.length)return;const lo=min===null?Math.min(...valid):min,hi=max===null?Math.max(...valid):max,span=hi-lo||1;const path=values.map((v,i)=>Number.isFinite(v)?[i/Math.max(1,values.length-1)*600,58-(v-lo)/span*48]:null).filter(Boolean).map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');const panel=document.createElement('div');panel.className='osc-panel';const head=document.createElement('div');head.className='osc-head';const name=document.createElement('span');name.textContent=title;const value=document.createElement('strong');value.textContent=number(valid[valid.length-1],k==='atr'?3:2);head.append(name,value);const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 600 68');const line=document.createElementNS('http://www.w3.org/2000/svg','path');line.setAttribute('d',path);line.setAttribute('fill','none');line.setAttribute('stroke',color);line.setAttribute('stroke-width','2.4');svg.append(line);panel.append(head,svg);host.append(panel);});
 }
 function renderIndicators(series){const v=calcIndicators(series);setText('ema20',Number.isFinite(v.ema20)?number(v.ema20):'—');setText('ema50',Number.isFinite(v.ema50)?number(v.ema50):'—');setText('rsi',Number.isFinite(v.rsi)?number(v.rsi,1):'—');setText('macd',v.macd?number(v.macd.hist,3):'—');drawOscillators(series,chosen());}
+function updateQuoteLine(){
+ if(chartState.quoteLine&&chartState.candle){try{chartState.candle.removePriceLine(chartState.quoteLine);}catch{}chartState.quoteLine=null;}
+ if(!chartState.candle||!quote||quote.symbol!==symbolValue())return;
+ chartState.quoteLine=chartState.candle.createPriceLine({price:quote.price,color:"#ffad66",lineWidth:2,lineStyle:2,axisLabelVisible:true,title:"FINNHUB"});
+}
 function renderChart(series,hiddenCount=0){
  const rows=series.filter(x=>Number.isFinite(x.time)&&x.time>0&&[x.open,x.high,x.low,x.close].every(Number.isFinite));if(!rows.length){$('chart').textContent='No candles to display.';return;}
  chartState.lastData=rows;const chart=ensureChart(),sel=chosen(),closes=rows.map(x=>x.close);
  chartState.candle.setData(rows.map(r=>({time:sec(r.time),open:r.open,high:r.high,low:r.low,close:r.close})));
+ updateQuoteLine();
  chartState.volume.setData(sel.volume?rows.map(r=>({time:sec(r.time),value:Math.max(0,r.volume),color:r.close>=r.open?'rgba(52,141,112,.72)':'rgba(168,79,91,.72)'})):[]);
  clearLines();
  [['ema200',200],['ema50',50],['ema20',20],['ema10',10],['ema5',5]].forEach(([k,p])=>{if(sel[k])addLine(k,rows,ema(closes,p),colors[k]);});
@@ -631,11 +635,11 @@ async function loadMarketData(){
   $('chart').textContent='Historical provider data unavailable. Check the data status and try again.';
  }
  if(results[1].status==='fulfilled'){
-  quote=results[1].value;quoteSymbol=sym;
+  quote=results[1].value;quoteSymbol=sym;updateQuoteLine();
   const age=quote.timestamp?Date.now()-quote.timestamp:null;
   setQuoteStatus(age!==null&&age>=0&&age<=300000?'RECENT FINNHUB QUOTE':'FINNHUB QUOTE · CHECK TIMESTAMP',age!==null&&age>=0&&age<=300000?'good':'warn');
   setText('ticketQuote',money(quote.price));
-  setText('ticketQuoteTime',quote.timestamp?timeLabel(quote.timestamp):'Provider timestamp unavailable');
+  setText('ticketQuoteTime',quote.timestamp?timeLabel(quote.timestamp)+' · Finnhub':'Finnhub · Provider timestamp unavailable');
   markSelectedPosition();processPendingOrders();
  }else{
   quote=null;setQuoteStatus('QUOTE UNAVAILABLE','error');
@@ -677,8 +681,7 @@ $('lockReveal').addEventListener('click',()=>{
  gameRound.revealed=true;account.game.played+=1;
  if(correct){account.game.correct+=1;account.game.score+=100;account.game.streak+=1;account.game.bestStreak=Math.max(account.game.bestStreak,account.game.streak);}
  else account.game.streak=0;
- account.predictions.push({at:Date.now(),symbol:symbolValue(),interval:intervalValue(),pick:selectedPick,actual:outcome.direction,correct,pct:outcome.pct});
- account.predictions=account.predictions.slice(-500);
+ account.predictions.push({at:Date.now(),symbol:symbolValue(),interval:intervalValue(),pick:selectedPick,actual:outcome.direction,correct,pct:outcome.pct}); account.predictions=account.predictions.slice(-500);
  saveAccount();
  renderChart(gameRound.visible.concat(gameRound.future));
  $('lockReveal').disabled=true;$('nextRound').disabled=false;
@@ -828,10 +831,10 @@ $('placeOrder').addEventListener('click',()=>{
 async function refreshQuoteAndOrders(){
  const sym=symbolValue();
  try{
-  const fresh=await fetchQuote(sym);quote=fresh;quoteSymbol=sym;
+  const fresh=await fetchQuote(sym);quote=fresh;quoteSymbol=sym;updateQuoteLine();
   const age=quote.timestamp?Date.now()-quote.timestamp:null;
   setQuoteStatus(age!==null&&age>=0&&age<=300000?'RECENT FINNHUB QUOTE':'FINNHUB QUOTE · CHECK TIMESTAMP',age!==null&&age>=0&&age<=300000?'good':'warn');
-  setText('ticketQuote',money(quote.price));setText('ticketQuoteTime',quote.timestamp?timeLabel(quote.timestamp):'Provider timestamp unavailable');
+  setText('ticketQuote',money(quote.price));setText('ticketQuoteTime',quote.timestamp?timeLabel(quote.timestamp)+' · Finnhub':'Finnhub · Provider timestamp unavailable');
   markSelectedPosition();processPendingOrders();
   setOrderFeedback('Quote refreshed from Finnhub at '+(quote.timestamp?timeLabel(quote.timestamp):'an unavailable provider timestamp')+'. Pending orders were checked against this reference.','good');
  }catch(error){setOrderFeedback(error.message||'Quote refresh failed.','bad');}
