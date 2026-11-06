@@ -838,7 +838,6 @@ async function refreshQuoteAndOrders(){
 }
 $('refreshQuote').addEventListener('click',refreshQuoteAndOrders);
 
-populateSectorPicker();
 $('sectorSymbol').addEventListener('change',()=>{const sym=$('sectorSymbol').value;if(!sym)return;$('symbol').value=sym;addToWatchlist(sym);loadMarketData();$('sectorSymbol').value='';});
 $('prevCandle').addEventListener('click',()=>advanceHistory(-1));
 $('nextCandle').addEventListener('click',()=>advanceHistory(1));
