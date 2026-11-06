@@ -36,7 +36,7 @@ test('Trading Arena uses the existing server-side market-data function for real 
 });
 
 test('Trading Arena embedded JavaScript parses without syntax errors',()=>{
- const match=arena.match(/<script>([\\s\\S]*?)<\\/script>/);
+ const match=arena.match(/<script>([\s\S]*?)<\/script>/);
  assert.ok(match,'Trading Arena script element is present');
  assert.doesNotThrow(()=>new Script(match[1]));
 });
