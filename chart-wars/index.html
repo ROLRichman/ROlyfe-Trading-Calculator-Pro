@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111d">
+<script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
 <title>RO’Lyfe Chart Wars™ · Trading Arena</title>
 <style>
 :root{color-scheme:dark;--bg:#07111d;--panel:#101e2d;--panel2:#0b1724;--line:#263b4d;--muted:#9fb3c7;--green:#59e1aa;--red:#ff7e86;--gold:#f5cc78;--blue:#80c7ff}
@@ -29,6 +30,27 @@ a{color:var(--blue);text-decoration:none}.topnav,.tabs,.actions{display:flex;gap
 .warning{border-color:#806b3c;background:#211b10;color:#f4dfb1}.small{font-size:.75rem}footer{padding:14px 4px 26px;color:#8298ac;font-size:.72rem}
 @media(max-width:760px){main{padding:9px}.grid2{grid-template-columns:1fr}.marketbar{grid-template-columns:repeat(2,minmax(0,1fr))}.marketbar .btn{width:100%}.accountbar{grid-template-columns:repeat(2,minmax(0,1fr))}.indicators{grid-template-columns:repeat(2,minmax(0,1fr))}.topnav{width:100%}.topnav a{flex:1;text-align:center}}
 @media(max-width:390px){.marketbar{grid-template-columns:1fr}.controls{gap:5px}.choice{font-size:.8rem}.tab{flex:1;text-align:center;padding:8px 7px}}
+
+.chartwrap{height:var(--chart-height,460px);min-height:240px;position:relative;touch-action:pan-y}
+#chart{width:100%;height:100%}
+.chart-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.chart-tools .btn{padding:6px 9px;font-size:.74rem}
+.chart-tools .btn.active{border-color:var(--green);background:#14513b}
+.chart-tools .tool-label{font-size:.7rem;color:var(--muted);font-weight:800;margin-right:2px}
+.indicator-tools{display:grid;gap:8px;margin:12px 0;padding:10px;border:1px solid #243b4e;border-radius:10px;background:#0a1724}
+.indicator-tools strong{color:#a8f1ce;font-size:.78rem}
+.indicator-toggles{display:flex;flex-wrap:wrap;gap:7px}
+.indicator-toggle{display:inline-flex;gap:6px;align-items:center;border:1px solid #30495c;background:#0b1724;padding:6px 8px;border-radius:8px;font-size:.72rem;color:#dce9f5;cursor:pointer}
+.indicator-toggle input{accent-color:#59e1aa}
+.indicator-panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px;margin-top:9px}
+.osc-panel{background:#0a1724;border:1px solid #243b4e;border-radius:9px;padding:8px;min-width:0}
+.osc-head{display:flex;justify-content:space-between;gap:8px;font-size:.7rem;color:var(--muted);margin-bottom:3px}
+.osc-head strong{color:#eaf5ff}
+.osc-panel svg{width:100%;height:68px;display:block}
+.chart-panel:fullscreen{overflow:auto;background:var(--bg);padding:14px}
+.chart-panel:fullscreen .chartwrap{height:calc(100vh - 300px);min-height:360px}
+@media(max-width:600px){.chartwrap{height:var(--chart-height,380px)}.chart-tools .tool-label{width:100%}.indicator-panels{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body><main>
@@ -53,7 +75,32 @@ a{color:var(--blue);text-decoration:none}.topnav,.tabs,.actions{display:flex;gap
 </section>
 <section class="panel chart-panel">
  <div class="chart-head"><div><div class="symbol" id="chartTitle">AAPL · Waiting for data</div><div class="sub" id="chartSub">Tickerbot historical OHLCV · selected timeframe</div></div><div class="sub" id="lastPrice">Last close —</div></div>
- <div class="chartwrap"><svg id="chart" viewBox="0 0 900 430" role="img" aria-label="Historical stock candlestick chart"><text x="30" y="55" fill="#8ea5b9" font-size="14">Load real market data to view candles.</text></svg></div>
+ <div class="chart-tools" aria-label="Chart controls">
+  <span class="tool-label">CHART SIZE</span>
+  <button class="btn" data-chart-size="compact">Compact</button><button class="btn active" data-chart-size="standard">Standard</button><button class="btn" data-chart-size="large">Large</button><button class="btn" id="chartFullscreen">Full screen</button>
+  <span class="tool-label">ZOOM</span><button class="btn" id="zoomIn" aria-label="Zoom in">＋</button><button class="btn" id="zoomOut" aria-label="Zoom out">－</button><button class="btn" id="fitChart">Fit</button>
+ </div>
+ <div class="chartwrap"><div id="chart" role="img" aria-label="Interactive historical stock candlestick chart">Load real market data to view candles.</div></div>
+ <div class="indicator-tools"><strong>CLICK TO ADD / REMOVE INDICATORS</strong><div class="indicator-toggles">
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="ema200"> EMA 200</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="ema50" checked> EMA 50</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="ema20" checked> EMA 20</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="ema10"> EMA 10</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="ema5"> EMA 5</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="vwap"> VWAP</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="hma31"> HMA 31</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="hma32"> HMA 32</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="rlband"> RL Pullback ATR</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="pps"> PPS-style arrows</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="volume" checked> Volume</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="rsi" checked> RSI</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="macd" checked> MACD</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="stoch"> Stochastic</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="cci"> CCI</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="ttm"> TTM Squeeze</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="atr"> ATR</label>
+ </div></div>
+ <div id="indicatorPanels" class="indicator-panels" aria-live="polite"></div>
  <div class="indicators">
   <div class="indicator"><small>EMA 20</small><strong id="ema20">—</strong></div><div class="indicator"><small>EMA 50</small><strong id="ema50">—</strong></div><div class="indicator"><small>RSI 14</small><strong id="rsi">—</strong></div><div class="indicator"><small>MACD 12 / 26 / 9</small><strong id="macd">—</strong></div>
  </div>
