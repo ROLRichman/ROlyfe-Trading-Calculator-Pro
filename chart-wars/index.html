@@ -51,6 +51,43 @@ a{color:var(--blue);text-decoration:none}.topnav,.tabs,.actions{display:flex;gap
 .chart-panel:fullscreen .chartwrap{height:calc(100vh - 300px);min-height:360px}
 @media(max-width:600px){.chartwrap{height:var(--chart-height,380px)}.chart-tools .tool-label{width:100%}.indicator-panels{grid-template-columns:1fr}}
 
+.scanner-watchlist{align-items:start;align-content:start;grid-auto-rows:min-content;margin:12px 0}
+.scanner-watchlist>.panel{margin:0;min-width:0;height:auto;align-self:start}
+.section-heading{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.watchlist-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:7px;align-content:start;grid-auto-rows:min-content;margin:10px 0}
+.watch-item{display:flex;min-width:0;border:1px solid #30495c;border-radius:9px;overflow:hidden;background:#0b1724}
+.watch-symbol{flex:1;min-width:0;border:0;background:transparent;color:#eaf5ff;padding:10px 8px;font:inherit;font-weight:850;cursor:pointer;text-align:left}
+.watch-symbol:hover{color:var(--green);background:#122b29}
+.watch-remove{border:0;border-left:1px solid #30495c;background:transparent;color:#9fb3c7;padding:0 10px;font-size:1.1rem;cursor:pointer}
+.watch-add,.scanner-controls,.account-size-controls{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:10px}
+.watch-add .field,.scanner-controls .field,.account-size-controls .field{flex:1;min-width:130px}
+.watch-add .btn,.scanner-controls .btn,.account-size-controls .btn{min-height:40px}
+.scanner-results{display:grid;gap:6px;align-content:start;grid-auto-rows:min-content;margin-top:9px;max-height:360px;overflow:auto}
+.scanner-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;padding:8px 9px;border:1px solid #243b4e;border-radius:9px;background:#0a1724}
+.scanner-symbol{display:grid;gap:1px;min-width:0}.scanner-symbol strong{font-size:.82rem}.scanner-symbol small{color:var(--muted);font-size:.7rem;overflow-wrap:anywhere}
+.scanner-row .btn{flex-shrink:0;padding:6px 9px;font-size:.72rem}
+.accountbar{grid-template-columns:repeat(auto-fit,minmax(135px,1fr));align-content:start;grid-auto-rows:min-content}
+main,.panel,.grid2,.marketbar,.chart-panel,.chartwrap{min-width:0}
+html,body{max-width:100%;overflow-x:hidden}
+main{width:100%;max-width:1280px;padding:clamp(8px,1.5vw,16px)}
+.grid2{align-items:start;align-content:start;grid-auto-rows:min-content}
+.panel{height:auto;align-self:start}
+@media(max-width:900px){
+ .grid2{grid-template-columns:minmax(0,1fr)}
+ .marketbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .scanner-watchlist{grid-template-columns:minmax(0,1fr)}
+ .account-size-controls .btn{width:100%}
+}
+@media(max-width:600px){
+ .marketbar{grid-template-columns:minmax(0,1fr)}
+ .watch-add,.scanner-controls{align-items:stretch}
+ .watch-add .btn,.scanner-controls .btn{width:100%}
+ .watchlist-grid{grid-template-columns:repeat(auto-fit,minmax(82px,1fr))}
+ .accountbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .chart-panel{padding:8px}
+ .chart-tools{gap:5px}
+ .chart-tools .btn{padding:7px 8px}
+}
 </style>
 </head>
 <body><main>
@@ -59,6 +96,7 @@ a{color:var(--blue);text-decoration:none}.topnav,.tabs,.actions{display:flex;gap
  <div class="topnav"><a href="../">← Pro Home</a><a href="../scanner-hub/">Scanner Hub</a></div>
 </header>
 <section class="accountbar" aria-label="Shared virtual account">
+ <div class="stat"><small>Starting account</small><strong id="startingBalance">$10,000.00</strong></div>
  <div class="stat"><small>Virtual equity</small><strong id="equity">$10,000.00</strong></div>
  <div class="stat"><small>Available cash</small><strong id="cash">$10,000.00</strong></div>
  <div class="stat"><small>Realized P/L</small><strong id="realized">$0.00</strong></div>
@@ -72,6 +110,26 @@ a{color:var(--blue);text-decoration:none}.topnav,.tabs,.actions{display:flex;gap
   <button class="btn primary" id="loadData">Load real market data</button>
  </div>
  <div class="statusline"><span id="barsStatus" class="pill warn">MARKET HISTORY NOT LOADED</span><span id="quoteStatus" class="pill warn">QUOTE NOT CHECKED</span><span id="dataStatus">Select a ticker and load provider data. No synthetic candles are substituted.</span></div>
+</section>
+<section class="grid2 scanner-watchlist" aria-label="Watchlist and scanner">
+ <section class="panel">
+  <div class="section-heading"><div><h2>My Watchlist</h2><p class="small">Tap a ticker to load its chart. Your list is saved on this device.</p></div><span class="pill" id="watchlistCount">0 SYMBOLS</span></div>
+  <div id="watchlistItems" class="watchlist-grid"><div class="empty">Add a ticker or choose one from Scanner Picks.</div></div>
+  <div class="watch-add">
+   <div class="field"><label for="watchlistSymbol">ADD A SYMBOL</label><input id="watchlistSymbol" maxlength="15" placeholder="e.g. NVDA" autocomplete="off"></div>
+   <button class="btn primary" id="addWatchlist">Add to watchlist</button>
+  </div>
+  <div class="small" id="watchlistStatus" aria-live="polite">AAPL, NVDA, TSLA, SPY and AMD are ready to start.</div>
+ </section>
+ <section class="panel">
+  <div class="section-heading"><div><h2>Scanner Picks</h2><p class="small">Scan a curated universe with current Finnhub quotes, then choose what to watch.</p></div><span class="pill">LIVE QUOTE SCAN</span></div>
+  <div class="scanner-controls">
+   <div class="field"><label for="scannerMode">SCAN TYPE</label><select id="scannerMode"><option value="all">All scanned symbols</option><option value="bullish">Bullish movers · +1% or more</option><option value="bearish">Bearish movers · −1% or less</option><option value="active">Active movers · ±2% or more</option><option value="low">Low-priced · $1–$10</option></select></div>
+   <button class="btn primary" id="runScanner">Run scanner</button>
+  </div>
+  <div class="statusline"><span class="pill warn" id="scannerStatus">READY TO SCAN</span><span class="small">24-symbol starter universe · not a full-market scan.</span></div>
+  <div id="scannerResults" class="scanner-results"><div class="empty">Run the scanner to see candidates you can add to your watchlist.</div></div>
+ </section>
 </section>
 <section class="panel chart-panel">
  <div class="chart-head"><div><div class="symbol" id="chartTitle">AAPL · Waiting for data</div><div class="sub" id="chartSub">Tickerbot historical OHLCV · selected timeframe</div></div><div class="sub" id="lastPrice">Last close —</div></div>
@@ -173,7 +231,12 @@ a{color:var(--blue);text-decoration:none}.topnav,.tabs,.actions{display:flex;gap
   </div>
  </div>
  <div class="panel">
-  <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><h2>Account controls</h2><p class="small">This shared practice account is saved in this browser on this device. It is not yet synced across devices.</p></div><button class="btn danger" id="resetAccount">Reset virtual account</button></div>
+  <div class="section-heading"><div><h2>Account controls</h2><p class="small">Choose the virtual starting balance for this device. Applying a new size resets the practice account; it does not affect real money or brokerage accounts.</p></div></div>
+  <div class="account-size-controls">
+   <div class="field"><label for="accountSize">STARTING ACCOUNT SIZE</label><select id="accountSize"><option value="5000">$5,000</option><option value="10000" selected>$10,000</option><option value="25000">$25,000</option><option value="50000">$50,000</option><option value="100000">$100,000</option><option value="custom">Custom amount</option></select></div>
+   <div class="field" id="customAccountField" hidden><label for="customAccountSize">CUSTOM AMOUNT (USD)</label><input type="number" id="customAccountSize" min="100" max="10000000" step="100" placeholder="Enter amount"></div>
+   <button class="btn danger" id="applyAccountSize">Apply size &amp; reset account</button>
+  </div>
  </div>
 </section>
 <footer>
@@ -189,6 +252,8 @@ const SUPABASE_LEGACY_ANON_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 const FUNCTION_URL = SUPABASE_URL + '/functions/v1/market-data';
 const ACCOUNT_KEY = 'rolyfe.pro.virtual-account.v1';
 const STARTING_CASH = 10000;
+const WATCHLIST_KEY = 'rolyfe.pro.watchlist.v1';
+const SCANNER_UNIVERSE = ['AAPL','NVDA','TSLA','AMD','SPY','QQQ','MSFT','AMZN','GOOGL','PLTR','META','AVGO','SMCI','SOFI','HOOD','INTC','F','SNAP','BAC','IWM','DIA','T','PFE','NOK'];
 const DEFAULT_SLIPPAGE_BPS = 5;
 const $ = (id) => document.getElementById(id);
 const money = (n) => Number(n || 0).toLocaleString('en-US',{style:'currency',currency:'USD'});
@@ -208,17 +273,18 @@ const toMillis = (value) => {
  const parsed = Date.parse(value);
  return Number.isFinite(parsed) ? parsed : null;
 };
-const defaultAccount = () => ({version:1,cash:STARTING_CASH,positions:{},trades:[],pending:[],predictions:[],game:{score:0,correct:0,played:0,streak:0,bestStreak:0},updatedAt:Date.now()});
+const defaultAccount = (initialBalance=STARTING_CASH) => ({version:2,initialBalance,cash:initialBalance,positions:{},trades:[],pending:[],predictions:[],game:{score:0,correct:0,played:0,streak:0,bestStreak:0},updatedAt:Date.now()});
 function loadAccount(){
  try{
   const raw = localStorage.getItem(ACCOUNT_KEY);
   if(!raw)return defaultAccount();
   const saved = JSON.parse(raw);
-  const base = defaultAccount();
-  return {...base,...saved,positions:saved.positions||{},trades:Array.isArray(saved.trades)?saved.trades:[],pending:Array.isArray(saved.pending)?saved.pending:[],predictions:Array.isArray(saved.predictions)?saved.predictions:[],game:{...base.game,...(saved.game||{})}};
+  const base = defaultAccount(Number(saved.initialBalance)||STARTING_CASH);
+  return {...base,...saved,initialBalance:Number(saved.initialBalance)||STARTING_CASH,positions:saved.positions||{},trades:Array.isArray(saved.trades)?saved.trades:[],pending:Array.isArray(saved.pending)?saved.pending:[],predictions:Array.isArray(saved.predictions)?saved.predictions:[],game:{...base.game,...(saved.game||{})}};
  }catch{return defaultAccount();}
 }
 let account = loadAccount();
+let watchlist = loadWatchlist();
 let bars = [];
 let barsMeta = null;
 let quote = null;
@@ -227,6 +293,75 @@ let gameRound = null;
 let selectedPick = null;
 let currentTab = 'wars';
 let loading = false;
+function loadWatchlist(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(WATCHLIST_KEY)||'null');
+  const list=Array.isArray(saved)?saved:[ 'AAPL','NVDA','TSLA','SPY','AMD' ];
+  return [...new Set(list.map(x=>String(x).trim().toUpperCase()).filter(x=>/^[A-Z0-9.^_-]{1,15}$/.test(x)))].slice(0,40);
+ }catch{return ['AAPL','NVDA','TSLA','SPY','AMD'];}
+}
+function saveWatchlist(){
+ try{localStorage.setItem(WATCHLIST_KEY,JSON.stringify(watchlist));}catch{}
+ renderWatchlist();
+}
+function addToWatchlist(symbol){
+ const sym=String(symbol||'').trim().toUpperCase();
+ if(!/^[A-Z0-9.^_-]{1,15}$/.test(sym)){setText('watchlistStatus','Enter a valid ticker symbol.');return false;}
+ if(watchlist.includes(sym)){setText('watchlistStatus',sym+' is already in your watchlist.');return false;}
+ if(watchlist.length>=40){setText('watchlistStatus','Watchlist limit reached (40 symbols). Remove one before adding another.');return false;}
+ watchlist.unshift(sym);saveWatchlist();setText('watchlistStatus',sym+' added to your watchlist.');return true;
+}
+function renderWatchlist(){
+ const host=$('watchlistItems');if(!host)return;
+ host.replaceChildren();setText('watchlistCount',watchlist.length+' SYMBOLS');
+ if(!watchlist.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='Your watchlist is empty. Add a ticker or choose a scanner pick.';host.append(empty);return;}
+ watchlist.forEach(sym=>{
+  const item=document.createElement('div');item.className='watch-item';
+  const open=document.createElement('button');open.className='watch-symbol';open.type='button';open.textContent=sym;open.setAttribute('aria-label','Load '+sym+' chart');open.addEventListener('click',()=>selectSymbol(sym));
+  const remove=document.createElement('button');remove.className='watch-remove';remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove '+sym);remove.addEventListener('click',()=>{watchlist=watchlist.filter(x=>x!==sym);saveWatchlist();setText('watchlistStatus',sym+' removed.');});
+  item.append(open,remove);host.append(item);
+ });
+}
+function selectSymbol(sym){
+ $('symbol').value=sym;
+ if(sym===symbolValue()&&bars.length){loadMarketData();return;}
+ bars=[];barsMeta=null;quote=null;gameRound=null;setBarsStatus('MARKET HISTORY NOT LOADED');setQuoteStatus('QUOTE NOT CHECKED');loadMarketData();
+}
+function renderScannerResults(rows,errors=0){
+ const host=$('scannerResults');host.replaceChildren();
+ if(!rows.length){const empty=document.createElement('div');empty.className='empty';empty.textContent=errors?'No qualifying quotes returned. Some symbols may be unavailable or rate-limited.':'No symbols matched this scan. Try another scan type.';host.append(empty);return;}
+ rows.forEach(row=>{
+  const item=document.createElement('div');item.className='scanner-row';
+  const info=document.createElement('div');info.className='scanner-symbol';
+  const name=document.createElement('strong');name.textContent=row.symbol;
+  const detail=document.createElement('small');detail.textContent=money(row.price)+' · '+(Number.isFinite(row.changePercent)?(row.changePercent>=0?'+':'')+number(row.changePercent,2)+'%':'change unavailable');
+  info.append(name,detail);
+  const add=document.createElement('button');add.className='btn';add.type='button';add.textContent=watchlist.includes(row.symbol)?'Added':'＋ Watch';add.disabled=watchlist.includes(row.symbol);add.addEventListener('click',()=>{if(addToWatchlist(row.symbol)){add.textContent='Added';add.disabled=true;}});
+  item.append(info,add);host.append(item);
+ });
+ if(errors){const note=document.createElement('div');note.className='small';note.textContent=errors+' symbols did not return usable quotes.';host.append(note);}
+}
+async function runScanner(){
+ const button=$('runScanner');if(button.disabled)return;
+ button.disabled=true;button.textContent='Scanning…';setText('scannerStatus','FETCHING QUOTES');$('scannerResults').replaceChildren();
+ const quotes=[];let errors=0;
+ for(let i=0;i<SCANNER_UNIVERSE.length;i+=6){
+  const batch=SCANNER_UNIVERSE.slice(i,i+6);
+  const results=await Promise.allSettled(batch.map(fetchQuote));
+  results.forEach(result=>{if(result.status==='fulfilled')quotes.push(result.value);else errors++;});
+  if(i+6<SCANNER_UNIVERSE.length)await new Promise(resolve=>setTimeout(resolve,350));
+ }
+ const mode=$('scannerMode').value;
+ let rows=quotes.map(q=>({symbol:q.symbol,price:q.price,changePercent:Number(q.changePercent)}));
+ if(mode==='bullish')rows=rows.filter(x=>Number.isFinite(x.changePercent)&&x.changePercent>=1);
+ if(mode==='bearish')rows=rows.filter(x=>Number.isFinite(x.changePercent)&&x.changePercent<=-1);
+ if(mode==='active')rows=rows.filter(x=>Number.isFinite(x.changePercent)&&Math.abs(x.changePercent)>=2);
+ if(mode==='low')rows=rows.filter(x=>x.price>=1&&x.price<=10);
+ rows.sort((a,b)=>Math.abs(Number(b.changePercent)||0)-Math.abs(Number(a.changePercent)||0));
+ renderScannerResults(rows,errors);
+ setText('scannerStatus',rows.length+' MATCHES · '+(quotes.length)+' QUOTES');
+ button.disabled=false;button.textContent='Run scanner';
+}
 function saveAccount(){
  account.updatedAt = Date.now();
  try{localStorage.setItem(ACCOUNT_KEY,JSON.stringify(account));}
@@ -461,7 +596,7 @@ function portfolioValues(){
 }
 function renderAccount(){
  const v=portfolioValues();
- setText('equity',money(v.equity));setText('cash',money(account.cash));setText('realized',money(v.realized));setText('gameScore',account.game.score);
+ setText('startingBalance',money(account.initialBalance||STARTING_CASH));setText('equity',money(v.equity));setText('cash',money(account.cash));setText('realized',money(v.realized));setText('gameScore',account.game.score);
  setText('correctCalls',account.game.correct);setText('accuracy',account.game.played?Math.round(account.game.correct/account.game.played*100)+'%':'—');
  setText('streak',account.game.streak);setText('bestStreak',account.game.bestStreak);
  setText('unrealized',money(v.unrealized));
@@ -601,6 +736,9 @@ async function refreshQuoteAndOrders(){
 }
 $('refreshQuote').addEventListener('click',refreshQuoteAndOrders);
 $('loadData').addEventListener('click',loadMarketData);
+$('addWatchlist').addEventListener('click',()=>{if(addToWatchlist($('watchlistSymbol').value))$('watchlistSymbol').value='';});
+$('watchlistSymbol').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('addWatchlist').click();}});
+$('runScanner').addEventListener('click',runScanner);
 $('symbol').addEventListener('change',()=>{bars=[];barsMeta=null;quote=null;gameRound=null;setBarsStatus('MARKET HISTORY NOT LOADED');setQuoteStatus('QUOTE NOT CHECKED');setText('dataStatus','Ticker changed. Loading '+symbolValue()+'.');setText('chartTitle',symbolValue()+' · Waiting for data');loadMarketData();});
 $('symbol').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadMarketData();}});
 $('interval').addEventListener('change',()=>{if(bars.length)loadMarketData();});
@@ -621,11 +759,16 @@ function hashTab(){
  if(['wars','simulator','performance'].includes(h))setTab(h);
 }
 window.addEventListener('hashchange',hashTab);
-$('resetAccount').addEventListener('click',()=>{
- if(!window.confirm('Reset the shared $10,000 virtual account, positions, paper fills, pending orders, scores and achievements on this browser?'))return;
- account=defaultAccount();saveAccount();renderTradingTables();setText('gameFeedback','Virtual account reset. Load historical candles to start again.');
+$('accountSize').value=String([5000,10000,25000,50000,100000].includes(account.initialBalance)?account.initialBalance:'custom');
+if($('accountSize').value==='custom')$('customAccountField').hidden=false;
+$('accountSize').addEventListener('change',()=>{$('customAccountField').hidden=$('accountSize').value!=='custom';});
+$('applyAccountSize').addEventListener('click',()=>{
+ const size=$('accountSize').value==='custom'?Number($('customAccountSize').value):Number($('accountSize').value);
+ if(!Number.isFinite(size)||size<100||size>10000000){setText('seasonLabel','Enter a custom starting amount between $100 and $10,000,000.');return;}
+ if(!window.confirm('Reset this device-local practice account to '+money(size)+'? Existing positions, paper fills, pending orders, scores and achievements will be cleared.'))return;
+ account=defaultAccount(size);saveAccount();renderTradingTables();setText('gameFeedback','Virtual account reset to '+money(size)+'. Load historical candles to start again.');setText('seasonLabel','Practice account size updated. Your virtual account is device-local.');
 });
-renderAccount();renderTradingTables();hashTab();setChartSize('standard');
+renderAccount();renderTradingTables();renderWatchlist();hashTab();setChartSize('standard');
 })();
 </script>
 </body>
