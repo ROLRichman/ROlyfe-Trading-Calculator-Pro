@@ -60,3 +60,23 @@ test('Paper simulator is virtual only and exposes market, limit, stop, slippage 
  assert.match(arena,/No real orders, brokerage connection/);
  assert.match(arena,/Gambler Check/);
 });
+
+
+test('Trading Arena has a real interactive chart with symbol, timeframe, zoom and responsive sizing controls',()=>{
+ assert.match(arena,/lightweight-charts@4\.2\.3/);
+ assert.match(arena,/addCandlestickSeries/);
+ assert.match(arena,/handleScroll/);
+ assert.match(arena,/handleScale/);
+ assert.match(arena,/data-chart-size="compact"/);
+ assert.match(arena,/data-chart-size="large"/);
+ assert.match(arena,/chartFullscreen/);
+ assert.match(arena,/zoomIn/);
+ assert.match(arena,/zoomOut/);
+ assert.match(arena,/fitChart/);
+ assert.match(arena,/loadMarketData\(\);\}\);/);
+});
+test('Trading Arena exposes clickable personal indicator suite and oscillator calculations',()=>{
+ for(const indicator of ['ema200','ema50','ema20','ema10','ema5','vwap','hma31','hma32','rlband','pps','volume','rsi','macd','stoch','cci','ttm','atr'])assert.ok(arena.includes('data-indicator="'+indicator+'"'),indicator);
+ for(const calc of ['function hma(','function vwap(','function rsis(','function stoch(','function cci(','function macds(','function atrs('])assert.ok(arena.includes(calc),calc);
+ assert.match(arena,/indicatorPanels/);
+});
