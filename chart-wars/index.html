@@ -352,13 +352,13 @@ function renderChart(series,hiddenCount=0){
  chartState.candle.setMarkers(sel.pps?ppsMarkers(rows):[]);
  chart.timeScale().fitContent();chart.timeScale().applyOptions({rightOffset:hiddenCount?hiddenCount+3:6});
 }
-function setChartSize(size){const heights={compact:280,standard:460,large:640};const h=heights[size]||460;document.querySelector('.chartwrap').style.setProperty('--chart-height',h+'px');document.querySelectorAll('[data-chart-size]').forEach(b=>b.classList.toggle('active',b.dataset.chartSize===size));if(chartState.chart)chartState.chart.applyOptions({height:h});}
+function setChartSize(size){const heights={compact:280,standard:460,large:640};chartState.size=size;const h=heights[size]||460;document.querySelector('.chartwrap').style.setProperty('--chart-height',h+'px');document.querySelectorAll('[data-chart-size]').forEach(b=>b.classList.toggle('active',b.dataset.chartSize===size));if(chartState.chart)chartState.chart.applyOptions({height:h});}
 function zoomChart(factor){if(!chartState.chart)return;const ts=chartState.chart.timeScale(),r=ts.getVisibleLogicalRange();if(!r)return;const mid=(r.from+r.to)/2,span=(r.to-r.from)*factor;ts.setVisibleLogicalRange({from:mid-span/2,to:mid+span/2});}
-document.querySelectorAll('[data-indicator]').forEach(x=>x.addEventListener('change',()=>{if(chartState.lastData.length){renderChart(chartState.lastData);renderIndicators(chartState.lastData);}}));
+document.querySelectorAll('[data-indicator]').forEach(x=>x.addEventListener('change',()=>{if(chartState.lastData.length){const range=chartState.chart?.timeScale().getVisibleLogicalRange();renderChart(chartState.lastData);renderIndicators(chartState.lastData);if(range)chartState.chart.timeScale().setVisibleLogicalRange(range);}}));
 document.querySelectorAll('[data-chart-size]').forEach(x=>x.addEventListener('click',()=>setChartSize(x.dataset.chartSize)));
 $('zoomIn').addEventListener('click',()=>zoomChart(.72));$('zoomOut').addEventListener('click',()=>zoomChart(1.38));$('fitChart').addEventListener('click',()=>{if(chartState.chart)chartState.chart.timeScale().fitContent();});
 $('chartFullscreen').addEventListener('click',async()=>{const panel=document.querySelector('.chart-panel');try{if(!document.fullscreenElement)await panel.requestFullscreen();else await document.exitFullscreen();}catch{setChartSize('large');}});
-document.addEventListener('fullscreenchange',()=>{if(chartState.chart)chartState.chart.applyOptions({height:document.fullscreenElement?Math.max(360,window.innerHeight-300):460});});
+document.addEventListener('fullscreenchange',()=>{if(chartState.chart){const heights={compact:280,standard:460,large:640};chartState.chart.applyOptions({height:document.fullscreenElement?Math.max(360,window.innerHeight-300):(heights[chartState.size]||460)});}});
 
 function setBarsStatus(text,kind='warn'){const el=$('barsStatus');el.textContent=text;el.className='pill '+kind;}
 function setQuoteStatus(text,kind='warn'){const el=$('quoteStatus');el.textContent=text;el.className='pill '+kind;}
