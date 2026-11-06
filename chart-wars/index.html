@@ -760,7 +760,7 @@ function hashTab(){
 }
 window.addEventListener('hashchange',hashTab);
 $('accountSize').value=String([5000,10000,25000,50000,100000].includes(account.initialBalance)?account.initialBalance:'custom');
-if($('accountSize').value==='custom')$('customAccountField').hidden=false;
+if($('accountSize').value==='custom'){$('customAccountField').hidden=false;$('customAccountSize').value=String(account.initialBalance);}
 $('accountSize').addEventListener('change',()=>{$('customAccountField').hidden=$('accountSize').value!=='custom';});
 $('applyAccountSize').addEventListener('click',()=>{
  const size=$('accountSize').value==='custom'?Number($('customAccountSize').value):Number($('accountSize').value);
