@@ -97,7 +97,7 @@ a{color:var(--blue);text-decoration:none}.topnav,.tabs,.actions{display:flex;gap
     <div class="field"><label>REFERENCE QUOTE</label><div class="stat"><strong id="ticketQuote">—</strong><small id="ticketQuoteTime">Load a quote</small></div></div>
    </div>
    <div class="actions" style="margin-top:10px"><button class="btn primary" id="placeOrder">Place paper order</button><button class="btn" id="refreshQuote">Refresh quote &amp; evaluate orders</button></div>
-   <div class="feedback" id="orderFeedback" aria-live="polite">Market orders use the latest Finnhub provider quote and apply the displayed simulated slippage. Limit and stop orders remain pending until a refreshed quote reaches the trigger.</div>
+   <div class="feedback" id="orderFeedback" aria-live="polite">Market and triggered stop orders apply simulated slippage to the latest Finnhub reference quote. Limit orders fill at the better of the trigger or refreshed quote. No commission is modeled ($0 assumption).</div>
    <div class="note">A provider timestamp is shown with every quote. Exchange entitlement determines whether a quote is real-time or delayed. Paper fills are simulated, never routed to a brokerage.</div>
   </div>
   <aside class="panel">
@@ -138,6 +138,7 @@ a{color:var(--blue);text-decoration:none}.topnav,.tabs,.actions{display:flex;gap
 'use strict';
 const SUPABASE_URL = 'https://ykmdyfbklvuoseqdjnxy.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_FaJPNdtRsZTemxpbp98F2g_U9ngkFaG';
+const SUPABASE_LEGACY_ANON_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbWR5ZmJrbHZ1b3NlcWRqbnh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3ODk5OTQsImV4cCI6MjEwODM2NTk5NH0._YEZj2GSnPcLGXmwgj98V_JzXdJIhTmOFoAH9BSia2I";
 const FUNCTION_URL = SUPABASE_URL + '/functions/v1/market-data';
 const ACCOUNT_KEY = 'rolyfe.pro.virtual-account.v1';
 const STARTING_CASH = 10000;
@@ -191,7 +192,7 @@ function intervalValue(){return $('interval').value;}
 async function callMarketData(params){
  const url = new URL(FUNCTION_URL);
  Object.entries(params).forEach(([key,value])=>url.searchParams.set(key,String(value)));
- const response = await fetch(url.toString(),{method:'GET',headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Accept:'application/json'}});
+ const response = await fetch(url.toString(),{method:'GET',headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+SUPABASE_LEGACY_ANON_JWT,Accept:'application/json'}});
  let payload;
  try{payload=await response.json();}catch{throw new Error('Market-data service returned an unreadable response.');}
  if(!response.ok)throw new Error(payload.error || ('Market-data request failed ('+response.status+').'));
@@ -498,7 +499,7 @@ function processPendingOrders(){
  const keep=[];
  for(const order of account.pending){
   if(order.symbol!==quote.symbol||!orderTriggered(order,quote.price)){keep.push(order);continue;}
-  const fillPrice=order.type==='limit'?order.triggerPrice:quote.price*(1+(order.side==='buy'?1:-1)*(order.slippageBps||DEFAULT_SLIPPAGE_BPS)/10000);
+  const fillPrice=order.type==='limit'?(order.side==='buy'?Math.min(quote.price,order.triggerPrice):Math.max(quote.price,order.triggerPrice)):quote.price*(1+(order.side==='buy'?1:-1)*(order.slippageBps||DEFAULT_SLIPPAGE_BPS)/10000);
   if(!fillOrder(order,quote.price,fillPrice,quote.timestamp)){keep.push(order);}
  }
  account.pending=keep;saveAccount();renderTradingTables();
