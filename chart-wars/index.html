@@ -526,61 +526,62 @@ function normalizeBars(rows){
  result.sort((a,b)=>(a.time||0)-(b.time||0));
  return result.filter((bar,index)=>!index || bar.time!==result[index-1].time);
 }
+function barCacheKey(symbol,interval,session){return BAR_CACHE_PREFIX+[symbol,interval,session].join(':');}
+function readBarsCache(symbol,interval,session){
+ try{
+  const raw=localStorage.getItem(barCacheKey(symbol,interval,session));if(!raw)return null;
+  const saved=JSON.parse(raw);
+  if(!Array.isArray(saved.bars)||!Number.isFinite(saved.storedAt))return null;
+  const age=Date.now()-saved.storedAt;if(age<0||age>BAR_CACHE_MAX_AGE_MS)return null;
+  return {...saved,ageMs:age};
+ }catch{return null;}
+}
+function writeBarsCache(symbol,interval,session,rows,meta){
+ try{localStorage.setItem(barCacheKey(symbol,interval,session),JSON.stringify({storedAt:Date.now(),bars:rows,meta}));}
+ catch{try{localStorage.removeItem(barCacheKey(symbol,interval,session));}catch{}}
+}
 async function fetchBars(symbol,interval,session){
- const payload = await callMarketData({provider:'tickerbot',symbol,interval,limit:500,session});
- if(!Array.isArray(payload.bars))throw new Error(payload.error || 'Tickerbot did not return a bars array.');
- const normalized = normalizeBars(payload.bars);
- if(normalized.length<30)throw new Error('Only '+normalized.length+' valid candles returned. At least 30 are needed for replay and indicators.');
- return {bars:normalized,meta:{provider:payload.provider||'tickerbot',asOf:payload.asOf||null,coverage:payload.coverage||'not supplied',adjusted:payload.adjusted,session:payload.session||session}};
+ const cached=readBarsCache(symbol,interval,session);
+ const freshMs=['1d','1w','1mo'].includes(interval)?120000:30000;
+ if(cached&&cached.ageMs<=freshMs)return {bars:cached.bars,meta:{...cached.meta,provider:'browser cache · '+(cached.meta?.provider||'Tickerbot'),stale:false,cacheAgeMs:cached.ageMs}};
+ try{
+  const payload=await callMarketData({provider:'tickerbot',symbol,interval,limit:500,session});
+  if(!Array.isArray(payload.bars))throw new Error(payload.error||'Tickerbot did not return a bars array.');
+  const normalized=normalizeBars(payload.bars);
+  if(normalized.length<30)throw new Error('Only '+normalized.length+' valid candles returned. At least 30 are needed for replay and indicators.');
+  const meta={provider:payload.provider||'tickerbot',asOf:payload.asOf||null,coverage:payload.coverage||'not supplied',adjusted:payload.adjusted,session:payload.session||session};
+  writeBarsCache(symbol,interval,session,normalized,meta);
+  return {bars:normalized,meta};
+ }catch(error){
+  if(cached&&cached.bars.length>=30)return {bars:cached.bars,meta:{...cached.meta,provider:'saved browser cache · '+(cached.meta?.provider||'Tickerbot'),stale:true,cacheAgeMs:cached.ageMs,cacheWarning:error.message||'Provider request failed.'}};
+  throw error;
+ }
 }
 async function fetchQuote(symbol){
- const payload = await callMarketData({provider:'finnhub',symbol});
- const price = Number(payload.price);
+ const cached=quoteCache.get(symbol);
+ if(cached&&Date.now()-cached.savedAt<=QUOTE_CACHE_TTL_MS)return cached.quote;
+ const payload=await callMarketData({provider:'finnhub',symbol});
+ const price=Number(payload.price);
  if(!Number.isFinite(price)||price<=0)throw new Error(payload.error||'Finnhub returned no usable quote.');
- return {symbol:payload.symbol||symbol,price,timestamp:toMillis(payload.timestamp),provider:payload.provider||'finnhub',changePercent:payload.changePercent};
+ const result={symbol:payload.symbol||symbol,price,timestamp:toMillis(payload.timestamp),provider:payload.provider||'finnhub',changePercent:payload.changePercent};
+ quoteCache.set(symbol,{savedAt:Date.now(),quote:result});
+ return result;
 }
-function ema(values,period){
- if(!values.length)return [];
- const k=2/(period+1),out=[values[0]];
- for(let i=1;i<values.length;i++)out.push(values[i]*k+out[i-1]*(1-k));
- return out;
-}
-function rsi(values,period=14){
- if(values.length<=period)return null;
- let gains=0,losses=0;
- for(let i=values.length-period;i<values.length;i++){
-  const delta=values[i]-values[i-1];
-  if(delta>0)gains+=delta;else losses-=delta;
- }
- if(losses===0)return 100;
- const rs=(gains/period)/(losses/period);
- return 100-(100/(1+rs));
-}
-function macd(values){
- if(values.length<35)return null;
- const fast=ema(values,12),slow=ema(values,26);
- const line=values.map((_,i)=>fast[i]-slow[i]);
- const signal=ema(line,9);
- return {line:line[line.length-1],signal:signal[signal.length-1],hist:line[line.length-1]-signal[signal.length-1]};
-}
-function calcIndicators(series){
- const closes=series.map(x=>x.close);
- return {ema20:ema(closes,20).at(-1),ema50:ema(closes,50).at(-1),rsi:rsi(closes),macd:macd(closes)};
-}
+const ema=IND.ema, wma=IND.wma, hma=IND.hma, atrs=IND.atr, vwap=IND.vwap;
+const rsis=IND.rsi, stochastic=IND.stochastic, cci=IND.cci, macds=IND.macd;
+const ttm=IND.ttmSqueeze, calcIndicators=IND.calcIndicators, rlSignals=IND.rlSignals;
 const chartState={chart:null,candle:null,volume:null,series:{},lastData:[],quoteLine:null};
 const colors={ema200:'#f59e0b',ema50:'#f5cc78',ema20:'#80c7ff',ema10:'#d7a6ff',ema5:'#ff9d75',vwap:'#4dd0e1',hma31:'#d5e85b',hma32:'#ff8fc8',rl:'#a88cff'};
 const chosen=()=>Object.fromEntries([...document.querySelectorAll('[data-indicator]')].map(x=>[x.dataset.indicator,x.checked]));
 const sec=ms=>Math.floor(Number(ms)/1000);
-function wma(v,p){return v.map((_,i)=>{if(i+1<p)return null;let s=0,w=0;for(let j=0;j<p;j++){s+=v[i-p+1+j]*(j+1);w+=j+1;}return s/w;});}
-function hma(v,p){const a=wma(v,Math.floor(p/2)),b=wma(v,p),d=v.map((_,i)=>a[i]===null||b[i]===null?0:2*a[i]-b[i]);return wma(d,Math.floor(Math.sqrt(p))).map((x,i)=>i<p+Math.floor(Math.sqrt(p))-2?null:x);}
-function atrs(rows,p=14){const tr=rows.map((r,i)=>i?Math.max(r.high-r.low,Math.abs(r.high-rows[i-1].close),Math.abs(r.low-rows[i-1].close)):r.high-r.low);return ema(tr,p);}
-function vwap(rows){let day='',pv=0,vol=0;return rows.map(r=>{const d=new Date(r.time).toISOString().slice(0,10);if(d!==day){day=d;pv=0;vol=0;}const t=(r.high+r.low+r.close)/3;pv+=t*r.volume;vol+=r.volume;return vol?pv/vol:null;});}
-function rsis(v,p=14){const out=Array(v.length).fill(null);if(v.length<=p)return out;let g=0,l=0;for(let i=1;i<=p;i++){const d=v[i]-v[i-1];if(d>0)g+=d;else l-=d;}let ag=g/p,al=l/p;out[p]=al?100-100/(1+ag/al):100;for(let i=p+1;i<v.length;i++){const d=v[i]-v[i-1];ag=(ag*(p-1)+Math.max(0,d))/p;al=(al*(p-1)+Math.max(0,-d))/p;out[i]=al?100-100/(1+ag/al):100;}return out;}
-function stoch(rows,p=14){return rows.map((r,i)=>{if(i+1<p)return null;const a=rows.slice(i-p+1,i+1),lo=Math.min(...a.map(x=>x.low)),hi=Math.max(...a.map(x=>x.high));return hi===lo?50:(r.close-lo)/(hi-lo)*100;});}
-function cci(rows,p=20){const t=rows.map(r=>(r.high+r.low+r.close)/3);return t.map((x,i)=>{if(i+1<p)return null;const a=t.slice(i-p+1,i+1),m=a.reduce((s,n)=>s+n,0)/p,d=a.reduce((s,n)=>s+Math.abs(n-m),0)/p;return d?(x-m)/(.015*d):0;});}
-function macds(v){const a=ema(v,12),b=ema(v,26),line=v.map((_,i)=>a[i]-b[i]),signal=ema(line,9);return {line,signal,hist:line.map((x,i)=>x-signal[i])};}
-function ttm(rows){const v=rows.map(x=>x.close),mid=v.map((_,i)=>{if(i<19)return null;const a=v.slice(i-19,i+1);return a.reduce((s,n)=>s+n,0)/20;});return v.map((x,i)=>mid[i]===null?null:x-mid[i]);}
 function toPoints(rows,values){return values.map((v,i)=>v===null||!Number.isFinite(v)?null:{time:sec(rows[i].time),value:v}).filter(Boolean);}
+function calculationContext(visibleRows,calculationSeries){
+ const lastTime=visibleRows[visibleRows.length-1]?.time;
+ const source=(calculationSeries||visibleRows).filter(x=>Number.isFinite(x.time)&&x.time>0&&x.time<=lastTime&&[x.open,x.high,x.low,x.close].every(Number.isFinite));
+ const firstTime=visibleRows[0]?.time;
+ const offset=Math.max(0,source.findIndex(x=>x.time===firstTime));
+ return {rows:source,offset};
+}
 function ensureChart(){
  if(chartState.chart)return chartState.chart;
  if(!window.LightweightCharts)throw new Error('Interactive chart library did not load. Refresh when online.');
