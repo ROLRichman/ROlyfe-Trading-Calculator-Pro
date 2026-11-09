@@ -750,6 +750,15 @@ document.querySelectorAll('[data-indicator]').forEach(x=>x.addEventListener('cha
 document.querySelectorAll('[data-chart-size]').forEach(x=>x.addEventListener('click',()=>setChartSize(x.dataset.chartSize)));
 $('zoomIn').addEventListener('click',()=>zoomChart(.72));$('zoomOut').addEventListener('click',()=>zoomChart(1.38));$('fitChart').addEventListener('click',()=>{if(chartState.chart)chartState.chart.timeScale().fitContent();});
 $('chartFullscreen').addEventListener('click',async()=>{const panel=document.querySelector('.chart-panel');try{if(!document.fullscreenElement)await panel.requestFullscreen();else await document.exitFullscreen();}catch{setChartSize('large');}});
+$('chartExpand').addEventListener('click',()=>{
+ chartExpanded=!chartExpanded;
+ const panel=document.querySelector('.chart-panel');
+ panel.classList.toggle('expanded-internal',chartExpanded);document.body.classList.toggle('chart-expanded',chartExpanded);
+ $('chartExpand').textContent=chartExpanded?'Restore chart size':'Expand inside page';
+ $('chartExpand').setAttribute('aria-pressed',String(chartExpanded));
+ requestAnimationFrame(()=>{if(chartState.chart){const host=$('chart');chartState.chart.applyOptions({width:Math.max(260,host.clientWidth),height:Math.max(220,host.clientHeight)});chartState.chart.timeScale().fitContent();}});
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&chartExpanded)$('chartExpand').click();});
 document.addEventListener('fullscreenchange',()=>{if(chartState.chart){const heights={compact:280,standard:460,large:640};chartState.chart.applyOptions({height:document.fullscreenElement?Math.max(360,window.innerHeight-300):(heights[chartState.size]||460)});}});
 
 function setBarsStatus(text,kind='warn'){const el=$('barsStatus');el.textContent=text;el.className='pill '+kind;}
@@ -926,25 +935,24 @@ function renderTradingTables(){
 }
 function setOrderFeedback(message,kind=''){const el=$('orderFeedback');el.textContent=message;el.className='feedback'+(kind?' '+kind:'');}
 function fillOrder(order,referencePrice,fillPrice,sourceTimestamp){
- const fee=0,notional=fillPrice*order.quantity;
- const position=account.positions[order.symbol];
+ const fee=0,notional=fillPrice*order.quantity,position=account.positions[order.symbol],historical=order.source==='historical_replay';
  if(order.side==='buy'){
   if(notional+fee>account.cash){setOrderFeedback('Insufficient virtual cash. Reduce the share quantity or reset the practice account.','bad');return false;}
   const oldQty=position?.quantity||0,oldCost=position?.avgCost||0,newQty=oldQty+order.quantity;
   account.cash-=notional+fee;
-  account.positions[order.symbol]={symbol:order.symbol,quantity:newQty,avgCost:((oldQty*oldCost)+notional+fee)/newQty,mark:quote?.symbol===order.symbol?quote.price:(position?.mark||fillPrice),markAt:sourceTimestamp||Date.now(),openedAt:position?.openedAt||Date.now()};
+  account.positions[order.symbol]={symbol:order.symbol,quantity:newQty,avgCost:((oldQty*oldCost)+notional+fee)/newQty,mark:historical?fillPrice:(quote?.symbol===order.symbol?quote.price:(position?.mark||fillPrice)),markAt:sourceTimestamp||Date.now(),markSource:historical?'historical_replay':'live_quote',openedAt:position?.openedAt||sourceTimestamp||Date.now()};
  }else{
   if(!position||position.quantity<order.quantity){setOrderFeedback('Sell order not filled: the virtual account does not hold enough shares.','bad');return false;}
   const realized=(fillPrice-position.avgCost)*order.quantity-fee;
   account.cash+=notional-fee;
-  position.quantity-=order.quantity;position.mark=quote?.symbol===order.symbol?quote.price:fillPrice;position.markAt=sourceTimestamp||Date.now();
+  position.quantity-=order.quantity;position.mark=historical?fillPrice:(quote?.symbol===order.symbol?quote.price:fillPrice);position.markAt=sourceTimestamp||Date.now();
   if(position.quantity===0)delete account.positions[order.symbol];
   order.realizedPnl=realized;
  }
- const completed={id:order.id,at:Date.now(),symbol:order.symbol,side:order.side,quantity:order.quantity,fillPrice,referencePrice,fee,slippageBps:order.slippageBps||0,realizedPnl:order.realizedPnl||0,holdMs:order.side==='sell'&&position?Date.now()-position.openedAt:0,sourceTimestamp:sourceTimestamp||null,type:order.type};
+ const completed={id:order.id,at:Date.now(),symbol:order.symbol,side:order.side,quantity:order.quantity,fillPrice,referencePrice,fee,slippageBps:order.slippageBps||0,realizedPnl:order.realizedPnl||0,holdMs:order.side==='sell'&&position?Math.max(0,(sourceTimestamp||Date.now())-position.openedAt):0,sourceTimestamp:sourceTimestamp||null,type:order.type,source:historical?'historical_replay':'finnhub_quote'};
  account.trades.push(completed);account.trades=account.trades.slice(-500);
  saveAccount();renderTradingTables();renderAccount();
- setOrderFeedback(order.side.toUpperCase()+' '+order.quantity+' '+order.symbol+' paper-filled at '+money(fillPrice)+' against reference '+money(referencePrice)+'. No broker order was sent.','good');
+ setOrderFeedback(order.side.toUpperCase()+' '+order.quantity+' '+order.symbol+' paper-filled at '+money(fillPrice)+' against '+(historical?'historical replay candle':'Finnhub reference quote')+' '+money(referencePrice)+'. No broker order was sent.','good');
  return true;
 }
 function orderTriggered(order,price){
@@ -956,7 +964,7 @@ function processPendingOrders(){
  if(!quote||quote.symbol!==symbolValue())return;
  const keep=[];
  for(const order of account.pending){
-  if(order.symbol!==quote.symbol||!orderTriggered(order,quote.price)){keep.push(order);continue;}
+  if(order.symbol!==quote.symbol||order.source==='historical_replay'||!orderTriggered(order,quote.price)){keep.push(order);continue;}
   const fillPrice=order.type==='limit'?(order.side==='buy'?Math.min(quote.price,order.triggerPrice):Math.max(quote.price,order.triggerPrice)):quote.price*(1+(order.side==='buy'?1:-1)*(order.slippageBps||DEFAULT_SLIPPAGE_BPS)/10000);
   if(!fillOrder(order,quote.price,fillPrice,quote.timestamp)){keep.push(order);}
  }
@@ -964,20 +972,26 @@ function processPendingOrders(){
 }
 $('orderType').addEventListener('change',()=>{$('triggerField').hidden=$('orderType').value==='market';});
 $('placeOrder').addEventListener('click',()=>{
- const sym=symbolValue(),side=$('side').value,type=$('orderType').value,qty=Number($('quantity').value),slippage=Number($('slippage').value);
+ const sym=symbolValue(),side=$('side').value,type=$('orderType').value,qty=Number($('quantity').value),slippage=Number($('slippage').value),source=$('fillReference').value;
  if(!Number.isInteger(qty)||qty<1||qty>100000){setOrderFeedback('Share quantity must be a whole number between 1 and 100,000.','bad');return;}
  if(!Number.isFinite(slippage)||slippage<0||slippage>100){setOrderFeedback('Slippage must be between 0 and 100 basis points.','bad');return;}
- const order={id:Date.now()+'-'+Math.random().toString(36).slice(2,8),symbol:sym,side,type,quantity:qty,slippageBps:slippage,createdAt:Date.now()};
+ const replayBarNow=source==='replay'&&bars.length&&historyEndIndex>0?bars[historyEndIndex-1]:null;
+ const order={id:Date.now()+'-'+Math.random().toString(36).slice(2,8),symbol:sym,side,type,quantity:qty,slippageBps:slippage,createdAt:Date.now(),source:source==='replay'?'historical_replay':'finnhub_quote'};
  if(type!=='market'){
   const trigger=Number($('triggerPrice').value);
   if(!Number.isFinite(trigger)||trigger<=0){setOrderFeedback('Enter a valid positive limit or stop trigger price.','bad');return;}
-  order.triggerPrice=trigger;
-  account.pending.push(order);saveAccount();renderTradingTables();
-  setOrderFeedback(type.toUpperCase()+' order saved as pending. Refresh this ticker’s quote to evaluate the trigger.','good');return;
+  order.triggerPrice=trigger;account.pending.push(order);saveAccount();renderTradingTables();
+  setOrderFeedback(type.toUpperCase()+' order saved. It will be evaluated against next replay candles or refreshed Finnhub quotes, according to the selected fill reference.','good');return;
  }
- if(!quote||quote.symbol!==sym){setOrderFeedback('Load a current provider quote for '+sym+' before placing a paper market order.','bad');return;}
- const fill=quote.price*(1+(side==='buy'?1:-1)*slippage/10000);
- fillOrder(order,quote.price,fill,quote.timestamp);
+ if(source==='replay'){
+  if(!replayBarNow||!Number.isFinite(Number(replayBarNow.close))){setOrderFeedback('Load historical candles and select a visible replay candle before placing a replay paper order.','bad');return;}
+  const reference=Number(replayBarNow.close),fill=reference*(1+(side==='buy'?1:-1)*slippage/10000);
+  fillOrder(order,reference,fill,replayBarNow.time);
+ }else{
+  if(!quote||quote.symbol!==sym){setOrderFeedback('Load a Finnhub provider quote for '+sym+' before placing a quote-based paper order.','bad');return;}
+  const fill=quote.price*(1+(side==='buy'?1:-1)*slippage/10000);
+  fillOrder(order,quote.price,fill,quote.timestamp);
+ }
 });
 async function refreshQuoteAndOrders(){
  const sym=symbolValue();
@@ -995,10 +1009,21 @@ $('refreshQuote').addEventListener('click',refreshQuoteAndOrders);
 $('sectorSymbol').addEventListener('change',()=>{const sym=$('sectorSymbol').value;if(!sym)return;$('symbol').value=sym;addToWatchlist(sym);loadMarketData();$('sectorSymbol').value='';});
 $('prevCandle').addEventListener('click',()=>advanceHistory(-1));
 $('nextCandle').addEventListener('click',()=>advanceHistory(1));
-$('playCandles').addEventListener('click',()=>{if(!bars.length)return;stopReplay();if(historyEndIndex>=bars.length)historyEndIndex=Math.max(1,historyEndIndex-1);replayTimer=setInterval(()=>{if(historyEndIndex>=bars.length){stopReplay();updateReplayControls();return;}historyEndIndex+=1;const start=Math.max(0,historyEndIndex-80),slice=bars.slice(start,historyEndIndex);renderChart(slice);renderIndicators(slice);updateReplayControls();soundCue('tick');},850);updateReplayControls();$('playCandles').textContent='▶ Playing';});
+$('playCandles').addEventListener('click',()=>{
+ if(!bars.length)return;stopReplay();
+ if(historyEndIndex>=bars.length){historyEndIndex=Math.max(1,bars.length-1);showHistory(historyEndIndex,false,true);}
+ replayTimer=setInterval(()=>{
+  if(historyEndIndex>=bars.length){stopReplay();updateReplayControls();return;}
+  advanceHistory(1,true);
+  if(historyEndIndex>=bars.length){stopReplay();updateReplayControls();}
+ },850);
+ updateReplayControls();$('playCandles').textContent='▶ Playing';
+});
 $('pauseCandles').addEventListener('click',()=>{stopReplay();updateReplayControls();});
-$('historyScrub').addEventListener('input',e=>showHistory(Number(e.target.value)+1));
+$('historyScrub').addEventListener('input',e=>{const end=Number(e.target.value)+1;rlAutoProcessedIndex=Math.max(rlAutoProcessedIndex,end);showHistory(end,false);});
 $('soundToggle').addEventListener('click',()=>{soundEnabled=!soundEnabled;$('soundToggle').textContent=soundEnabled?'🔊 Sound: On':'🔇 Sound: Off';$('soundToggle').setAttribute('aria-pressed',String(soundEnabled));soundCue('tick');});
+$('rlAutoPaper').addEventListener('change',()=>{rlAutoProcessedIndex=historyEndIndex;setText('rlStatus',$('rlAutoPaper').checked?'RL auto paper execution armed for future replay candles only. Past candles will not be backfilled.':'RL auto paper execution is off.');});
+$('rlEngineEnabled').addEventListener('change',()=>{if(bars.length){const end=Math.max(1,historyEndIndex),slice=bars.slice(Math.max(0,end-80),end);renderChart(slice,0,bars);renderIndicators(slice,bars);}});
 $('askCoach').addEventListener('click',askGuidedCoach);
 $('coachQuestion').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();askGuidedCoach();}});
 $('loadData').addEventListener('click',loadMarketData);
