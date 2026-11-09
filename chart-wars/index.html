@@ -702,7 +702,7 @@ async function fetchBars(symbol,interval,session){
   if(!Array.isArray(payload.bars))throw new Error(payload.error||'Tickerbot did not return a bars array.');
   const normalized=normalizeBars(payload.bars);
   if(normalized.length<30)throw new Error('Only '+normalized.length+' valid candles returned. At least 30 are needed for replay and indicators.');
-  const meta={provider:payload.provider||'tickerbot',asOf:payload.asOf||null,coverage:payload.coverage||'not supplied',adjusted:payload.adjusted,session:payload.session||session};
+  const meta={provider:payload.provider||'tickerbot',asOf:payload.asOf||null,coverage:payload.coverage||'not supplied',adjusted:payload.adjusted,session:payload.session||session,fallback:payload.dataStatus==='provider_fallback',serverCache:payload.cache||null,serverCacheAgeMs:payload.cacheAgeMs||null,note:payload.note||null};
   writeBarsCache(symbol,interval,session,normalized,meta);
   return {bars:normalized,meta};
  }catch(error){
@@ -887,7 +887,9 @@ async function loadMarketData(){
   bars=results[0].value.bars;barsMeta=results[0].value.meta;historyEndIndex=Math.min(80,bars.length);rlAutoProcessedIndex=historyEndIndex;stopReplay();
   setBarsStatus(bars.length+' HISTORICAL BARS · '+(barsMeta.provider||'PROVIDER').toUpperCase(),barsMeta.stale?'warn':'good');
   const asOf=barsMeta.asOf?timeLabel(barsMeta.asOf):(bars[bars.length-1].time?timeLabel(bars[bars.length-1].time):'provider timestamp not supplied');
-  setText('dataStatus',(barsMeta.stale?'Saved historical cache · not freshly verified':'Real historical candles')+' · '+barsMeta.provider+' · '+bars.length+' valid bars · latest '+asOf+' · coverage '+barsMeta.coverage+'.');
+  const sourceLabel=barsMeta.stale?'Saved browser cache · not freshly verified':barsMeta.fallback?'Secondary provider fallback':'Provider historical candles';
+  const serverCacheLabel=barsMeta.serverCache?' · server cache '+number((barsMeta.serverCacheAgeMs||0)/1000,0)+'s old':'';
+  setText('dataStatus',sourceLabel+' · '+barsMeta.provider+' · '+bars.length+' valid bars · latest '+asOf+' · coverage '+barsMeta.coverage+serverCacheLabel+'.');
   updateHeaderMarket();renderChart(bars.slice(0,historyEndIndex),0,bars);renderIndicators(bars.slice(0,historyEndIndex),bars);updateReplayControls();startGameRound();
  }else{
   bars=[];barsMeta=null;historyEndIndex=0;stopReplay();updateReplayControls();gameRound=null;setBarsStatus('HISTORICAL DATA UNAVAILABLE','error');
