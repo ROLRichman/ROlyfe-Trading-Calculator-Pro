@@ -5,7 +5,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const finite = (v) => Number.isFinite(Number(v));
+  const numeric = (v) => v === null || v === undefined || v === "" ? NaN : Number(v);
+  const finite = (v) => Number.isFinite(numeric(v));
   const periodOf = (p) => {
     const n = Math.floor(Number(p));
     if (!Number.isFinite(n) || n < 1 || n > 10000) throw new RangeError("Period must be an integer from 1 to 10000.");
@@ -17,7 +18,7 @@
     const p = periodOf(period), out = Array(values.length).fill(null);
     let sum = 0, queue = [];
     for (let i = 0; i < values.length; i++) {
-      const v = Number(values[i]);
+      const v = numeric(values[i]);
       if (!Number.isFinite(v)) { sum = 0; queue = []; continue; }
       queue.push(v); sum += v;
       if (queue.length > p) sum -= queue.shift();
@@ -32,7 +33,7 @@
     const k = 2 / (p + 1);
     let seed = [], previous = null;
     for (let i = 0; i < values.length; i++) {
-      const value = Number(values[i]);
+      const value = numeric(values[i]);
       if (!Number.isFinite(value)) { seed = []; previous = null; continue; }
       if (previous === null) {
         seed.push(value);
@@ -53,7 +54,7 @@
     for (let i = p - 1; i < values.length; i++) {
       let weighted = 0, valid = true;
       for (let j = 0; j < p; j++) {
-        const v = Number(values[i - p + 1 + j]);
+        const v = numeric(values[i - p + 1 + j]);
         if (!Number.isFinite(v)) { valid = false; break; }
         weighted += v * (j + 1);
       }
@@ -185,7 +186,7 @@
   function rollingStd(values, period) {
     const p = periodOf(period), out = Array(values.length).fill(null);
     for (let i = p - 1; i < values.length; i++) {
-      const window = values.slice(i - p + 1, i + 1).map(Number);
+      const window = values.slice(i - p + 1, i + 1).map(numeric);
       if (!window.every(Number.isFinite)) continue;
       const mean = average(window);
       out[i] = Math.sqrt(average(window.map((v) => (v - mean) ** 2)));
@@ -196,7 +197,7 @@
   function rollingExtreme(values, period, direction) {
     const p = periodOf(period), out = Array(values.length).fill(null);
     for (let i = p - 1; i < values.length; i++) {
-      const window = values.slice(i - p + 1, i + 1).map(Number);
+      const window = values.slice(i - p + 1, i + 1).map(numeric);
       if (window.every(Number.isFinite)) out[i] = direction === "high" ? Math.max(...window) : Math.min(...window);
     }
     return out;
@@ -207,7 +208,7 @@
     const xMean = (p - 1) / 2;
     const denominator = p * (p * p - 1) / 12;
     for (let i = p - 1; i < values.length; i++) {
-      const window = values.slice(i - p + 1, i + 1).map(Number);
+      const window = values.slice(i - p + 1, i + 1).map(numeric);
       if (!window.every(Number.isFinite)) continue;
       const yMean = average(window);
       let covariance = 0;
