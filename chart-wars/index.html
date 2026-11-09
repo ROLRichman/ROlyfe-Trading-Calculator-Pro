@@ -301,6 +301,22 @@ h2{color:#b8f0d5}
   </div>
  </div>
 
+ <section class="panel">
+  <div class="section-heading"><div><h2>Multi-day Live Strategy Journal</h2><p class="small">Save a long-only plan, compare later Finnhub quotes with entry / stop / target, and retain observations on this device.</p></div><span class="pill">PAPER PLAN · NO BROKER</span></div>
+  <div class="ordergrid">
+   <div class="field"><label for="planSymbol">TICKER</label><input id="planSymbol" maxlength="15" value="AAPL" autocomplete="off"></div>
+   <div class="field"><label for="planShares">VIRTUAL SHARES</label><input id="planShares" type="number" min="1" max="100000" step="1" value="1"></div>
+   <div class="field"><label for="planEntry">PLANNED ENTRY</label><input id="planEntry" type="number" min="0.01" step="0.01" placeholder="Entry price"></div>
+   <div class="field"><label for="planStop">STOP / INVALIDATION</label><input id="planStop" type="number" min="0.01" step="0.01" placeholder="Below entry"></div>
+   <div class="field"><label for="planTarget">TARGET</label><input id="planTarget" type="number" min="0.01" step="0.01" placeholder="Above entry"></div>
+   <div class="field"><label for="planNote">STRATEGY NOTE</label><input id="planNote" maxlength="160" placeholder="Setup, confirmation, timeframe"></div>
+  </div>
+  <div class="actions" style="margin-top:10px"><button class="btn primary" id="saveStrategyPlan">Save strategy plan</button><button class="btn" id="checkStrategyPlans">Check open plans now</button></div>
+  <label class="indicator-toggle" style="margin-top:9px"><input id="strategyAutoMonitor" type="checkbox"> Check open plans every 60 seconds while this page is open and visible</label>
+  <div class="note">Device-local journal. Automatic checks pause when the page is hidden, the browser sleeps, or the device is off. This is not an unattended background monitor, and no alerts or broker orders are sent. Reopen this page and check again to compare the latest quote.</div>
+  <div id="strategyFeedback" class="feedback" aria-live="polite">No strategy plans saved yet.</div>
+  <div id="strategyPlans" class="tablewrap"><div class="empty">Save a plan to start your multi-day practice journal.</div></div>
+ </section>
 </section>
 <footer>
  RO’Lyfe Trading Arena · Data: Tickerbot historical OHLCV and Finnhub quote responses through the existing Supabase market-data function. Quote timing and data coverage depend on provider entitlements. Paper orders, fills, P/L and achievements are simulated. No real orders, brokerage connection, or investment advice.
@@ -320,6 +336,7 @@ const BAR_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const QUOTE_CACHE_TTL_MS = 15000;
 const quoteCache = new Map();
 const ACCOUNT_KEY = 'rolyfe.pro.virtual-account.v1';
+const STRATEGY_KEY = 'rolyfe.pro.strategy-journal.v1';
 const STARTING_CASH = 10000;
 const WATCHLIST_KEY = 'rolyfe.pro.watchlist.v1';
 const SCANNER_UNIVERSE = ['AAPL','NVDA','TSLA','AMD','SPY','QQQ','MSFT','AMZN','GOOGL','PLTR','META','AVGO','SMCI','SOFI','HOOD','INTC','F','SNAP','BAC','IWM','DIA','T','PFE','NOK'];
@@ -486,6 +503,9 @@ function loadAccount(){
  }catch{return defaultAccount();}
 }
 let account = loadAccount();
+let strategyPlans = loadStrategyPlans();
+let strategyMonitorTimer = null;
+let strategyCheckInProgress = false;
 let watchlist = loadWatchlist();
 let bars = [];
 let barsMeta = null;
@@ -495,6 +515,72 @@ let gameRound = null;
 let selectedPick = null;
 let currentTab = 'wars';
 let loading = false;
+function loadStrategyPlans(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(STRATEGY_KEY)||'[]');
+  return Array.isArray(saved)?saved.filter(p=>p&&p.id&&/^[A-Z0-9.^_-]{1,15}$/.test(p.symbol)&&Number(p.entry)>0&&Number(p.stop)>0&&Number(p.target)>0).slice(-20):[];
+ }catch{return [];}
+}
+function saveStrategyPlans(){
+ try{localStorage.setItem(STRATEGY_KEY,JSON.stringify(strategyPlans));}
+ catch{setText('strategyFeedback','Browser storage is full or unavailable; strategy changes may not persist.');}
+}
+function renderStrategyPlans(){
+ const host=$('strategyPlans');if(!host)return;
+ host.replaceChildren();
+ if(!strategyPlans.length){const empty=document.createElement('div');empty.className='empty';empty.textContent='Save a plan to start your multi-day practice journal.';host.append(empty);return;}
+ const table=document.createElement('table');
+ table.innerHTML='<thead><tr><th>Symbol / Plan</th><th>Entry</th><th>Last quote</th><th>Stop / Target</th><th>Virtual P/L</th><th>Status / Last check</th><th></th></tr></thead>';
+ const body=document.createElement('tbody');
+ strategyPlans.slice().reverse().forEach(plan=>{
+  const tr=document.createElement('tr'),pnl=Number.isFinite(Number(plan.lastPrice))?(Number(plan.lastPrice)-plan.entry)*plan.shares:null;
+  const status=plan.status==='watching'?'WATCHING':plan.status==='target_hit'?'TARGET TOUCHED':plan.status==='stop_hit'?'STOP TOUCHED':'CLOSED';
+  const cells=[plan.symbol+(plan.note?' · '+plan.note:''),money(plan.entry),Number.isFinite(Number(plan.lastPrice))?money(plan.lastPrice):'Not checked',money(plan.stop)+' / '+money(plan.target),pnl===null?'—':money(pnl),status+(plan.lastChecked?' · '+timeLabel(plan.lastChecked):' · Not checked')];
+  cells.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index===4&&pnl!==null)td.className=pnl>=0?'positive':'negative';tr.append(td);});
+  const action=document.createElement('td'),remove=document.createElement('button');remove.className='btn danger';remove.textContent='Remove';
+  remove.addEventListener('click',()=>{strategyPlans=strategyPlans.filter(x=>x.id!==plan.id);saveStrategyPlans();renderStrategyPlans();});
+  action.append(remove);tr.append(action);body.append(tr);
+  if(Array.isArray(plan.observations)&&plan.observations.length){const detail=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=7;cell.className='small';cell.textContent='Observations: '+plan.observations.slice(-5).map(o=>timeLabel(o.at)+' '+money(o.price)).join(' · ');detail.append(cell);body.append(detail);}
+ });
+ table.append(body);host.append(table);
+}
+function addStrategyPlan(){
+ const symbol=$('planSymbol').value.trim().toUpperCase(),shares=Number($('planShares').value),entry=Number($('planEntry').value),stop=Number($('planStop').value),target=Number($('planTarget').value);
+ if(!/^[A-Z0-9.^_-]{1,15}$/.test(symbol)){setText('strategyFeedback','Enter a valid ticker symbol.');return;}
+ if(!Number.isInteger(shares)||shares<1||shares>100000){setText('strategyFeedback','Virtual shares must be a whole number from 1 to 100,000.');return;}
+ if(![entry,stop,target].every(x=>Number.isFinite(x)&&x>0)||!(stop<entry&&entry<target)){setText('strategyFeedback','For a long-only plan, enter positive prices with Stop < Entry < Target.');return;}
+ if(strategyPlans.length>=20){setText('strategyFeedback','Journal limit reached (20 plans). Remove an old plan before adding another.');return;}
+ const plan={id:Date.now()+'-'+Math.random().toString(36).slice(2,8),symbol,shares,entry,stop,target,note:$('planNote').value.trim(),createdAt:Date.now(),status:'watching',lastPrice:null,lastQuoteTimestamp:null,lastChecked:null,observations:[]};
+ strategyPlans.push(plan);saveStrategyPlans();renderStrategyPlans();
+ setText('strategyFeedback',symbol+' plan saved on this device. Entry '+money(entry)+', stop '+money(stop)+', target '+money(target)+'.');$('planNote').value='';
+}
+async function checkStrategyPlans(){
+ if(strategyCheckInProgress)return;
+ const open=strategyPlans.filter(p=>p.status==='watching');
+ if(!open.length){setText('strategyFeedback','No open strategy plans need a quote check.');return;}
+ strategyCheckInProgress=true;$('checkStrategyPlans').disabled=true;$('checkStrategyPlans').textContent='Checking…';
+ let checked=0,failed=0;
+ const results=await Promise.allSettled(open.map(p=>fetchQuote(p.symbol)));
+ results.forEach((result,index)=>{
+  if(result.status!=='fulfilled'){failed++;return;}
+  const plan=open[index],q=result.value,price=q.price;
+  plan.lastPrice=price;plan.lastQuoteTimestamp=q.timestamp||null;plan.lastChecked=Date.now();
+  plan.observations=(Array.isArray(plan.observations)?plan.observations:[]).concat([{at:Date.now(),price,quoteTimestamp:q.timestamp||null,provider:q.provider||'finnhub'}]).slice(-120);
+  if(price<=plan.stop){plan.status='stop_hit';plan.triggeredAt=Date.now();}
+  else if(price>=plan.target){plan.status='target_hit';plan.triggeredAt=Date.now();}
+  checked++;
+ });
+ saveStrategyPlans();renderStrategyPlans();
+ setText('strategyFeedback',checked+' plan(s) checked against Finnhub. '+failed+' quote(s) unavailable. Quote timestamp and exchange entitlement determine whether data is real-time or delayed.');
+ strategyCheckInProgress=false;$('checkStrategyPlans').disabled=false;$('checkStrategyPlans').textContent='Check open plans now';
+}
+function syncStrategyMonitor(){
+ if(strategyMonitorTimer){clearInterval(strategyMonitorTimer);strategyMonitorTimer=null;}
+ if($('strategyAutoMonitor').checked){
+  setText('strategyFeedback','Open plans will be checked every 60 seconds while this page remains visible. This stops when the browser hides or suspends the page.');
+  checkStrategyPlans();strategyMonitorTimer=window.setInterval(()=>{if(!document.hidden)checkStrategyPlans();},60000);
+ }
+}
 function loadWatchlist(){
  try{
   const saved=JSON.parse(localStorage.getItem(WATCHLIST_KEY)||'null');
@@ -1038,6 +1124,11 @@ $('historyScrub').addEventListener('input',e=>{const end=Number(e.target.value)+
 $('soundToggle').addEventListener('click',()=>{soundEnabled=!soundEnabled;$('soundToggle').textContent=soundEnabled?'🔊 Sound: On':'🔇 Sound: Off';$('soundToggle').setAttribute('aria-pressed',String(soundEnabled));soundCue('tick');});
 $('rlAutoPaper').addEventListener('change',()=>{rlAutoProcessedIndex=historyEndIndex;setText('rlStatus',$('rlAutoPaper').checked?'RL auto paper execution armed for future replay candles only. Past candles will not be backfilled.':'RL auto paper execution is off.');});
 $('rlEngineEnabled').addEventListener('change',()=>{if(bars.length){const end=Math.max(1,historyEndIndex),slice=bars.slice(Math.max(0,end-80),end);renderChart(slice,0,bars);renderIndicators(slice,bars);}});
+$('saveStrategyPlan').addEventListener('click',addStrategyPlan);
+$('checkStrategyPlans').addEventListener('click',checkStrategyPlans);
+$('strategyAutoMonitor').addEventListener('change',syncStrategyMonitor);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&$('strategyAutoMonitor').checked)checkStrategyPlans();});
+window.addEventListener('beforeunload',()=>{if(strategyMonitorTimer)clearInterval(strategyMonitorTimer);});
 $('askCoach').addEventListener('click',askGuidedCoach);
 $('coachQuestion').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();askGuidedCoach();}});
 $('loadData').addEventListener('click',loadMarketData);
@@ -1073,7 +1164,7 @@ $('applyAccountSize').addEventListener('click',()=>{
  if(!window.confirm('Reset this device-local practice account to '+money(size)+'? Existing positions, paper fills, pending orders, scores and achievements will be cleared.'))return;
  account=defaultAccount(size);saveAccount();renderTradingTables();setText('gameFeedback','Virtual account reset to '+money(size)+'. Load historical candles to start again.');setText('seasonLabel','Practice account size updated. Your virtual account is device-local.');
 });
-renderAccount();renderTradingTables();renderWatchlist();hashTab();setChartSize('standard');populateSectorPicker();
+renderAccount();renderTradingTables();renderWatchlist();renderStrategyPlans();hashTab();setChartSize('standard');populateSectorPicker();
 })();
 </script>
 </body>
