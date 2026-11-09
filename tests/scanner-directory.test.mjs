@@ -78,7 +78,7 @@ test('Trading Arena has a real interactive chart with symbol, timeframe, zoom an
 test('Trading Arena exposes clickable indicator suite backed by the separate calculation module',()=>{
  for(const indicator of ['ema200','ema50','ema20','ema10','ema5','vwap','hma31','hma32','rlband','pps','volume','rsi','macd','stoch','cci','ttm','atr'])assert.ok(arena.includes('data-indicator="'+indicator+'"'),indicator);
  assert.match(arena,/<script src="\.\/indicators\.js"><\/script>/);
- const indicatorSource=fs.readFileSync(path.join(root,'chart-wars','indicators.js'),'utf8');
+ const indicatorSource=readFileSync(new URL('../chart-wars/indicators.js',import.meta.url),'utf8');
  for(const calc of ['function hma(','function vwap(','function rsi(','function stochastic(','function cci(','function macd(','function atr(','function ttmSqueeze(','function rlSignals('])assert.ok(indicatorSource.includes(calc),calc);
  assert.match(arena,/indicatorPanels/);
 });
