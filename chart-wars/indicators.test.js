@@ -110,3 +110,38 @@ test("Wilder ATR is null until it has a full valid seed", () => {
   assert.equal(result.slice(0, 13).every(v => v === null), true);
   assert.equal(result[13], 2);
 });
+
+test("RSI restarts its Wilder seed after a missing close", () => {
+  const out = I.rsi([1, 2, 3, null, 10, 11, 12], 2);
+  assert.equal(out[2], 100);
+  assert.equal(out[3], null);
+  assert.equal(out[4], null);
+  assert.equal(out[5], null);
+  assert.equal(out[6], 100);
+});
+
+test("TTM squeeze stays unready until both BB and Keltner windows exist", () => {
+  const rows = Array.from({ length: 30 }, (_, i) => row(i, 10, 11, 9, 10));
+  const out = I.ttmSqueeze(rows);
+  assert.equal(out.ready[18], false);
+  assert.equal(out.squeezeOn[18], null);
+  assert.equal(out.ready[19], true);
+  assert.equal(typeof out.squeezeOn[19], "boolean");
+});
+
+test("RL trailing stop tests the prior stop before raising it from the current close", () => {
+  const rows = [];
+  for (let i = 0; i < 217; i++) {
+    let close = 100 + i * 0.2;
+    if (i === 215) close -= 2.2;
+    if (i === 216) close += 1.8;
+    rows.push(row(i, close - 0.1, close + 0.3, close - 0.4, close));
+  }
+  rows.push(row(217, 149.8, 150.5, 143.4, 150));
+  rows.push(row(218, 149, 149.5, 146, 147));
+  const events = I.rlSignals(rows);
+  assert.equal(events[216]?.type, "buy");
+  assert.equal(events[217], null);
+  assert.equal(events[218]?.type, "exit");
+  assert.match(events[218].reason, /trailing stop touched/);
+});
