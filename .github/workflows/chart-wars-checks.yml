@@ -30,7 +30,11 @@ jobs:
           node-version: "20"
       - name: Check indicator module syntax
         run: node --check chart-wars/indicators.js
+      - name: Check paper trading module syntax
+        run: node --check chart-wars/paper-trading.js
       - name: Check inline application syntax
         run: node chart-wars/syntax-check.cjs
-      - name: Run calculation and RL tests
+      - name: Run indicator and RL tests
         run: node --test chart-wars/indicators.test.js
+      - name: Run paper trading ledger and order tests
+        run: node --test chart-wars/paper-trading.test.js
