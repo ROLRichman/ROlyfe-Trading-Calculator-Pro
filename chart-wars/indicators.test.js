@@ -81,3 +81,32 @@ test("RL returns only trend-watch, buy and exit events", () => {
   assert.equal(events.length, rows.length);
   assert.ok(events.some((x) => x && ["trend_up", "buy", "exit"].includes(x.type)));
 });
+
+test("EMA resets cleanly across null warmup gaps instead of treating null as zero", () => {
+  assert.deepEqual(I.ema([1, 2, 3, null, 10, 11, 12], 3), [null, null, 2, null, null, null, 11]);
+});
+
+test("MACD does not seed its signal EMA with null warmup values", () => {
+  const values = Array.from({ length: 60 }, (_, i) => 100 + i);
+  const m = I.macd(values);
+  assert.equal(m.line.slice(0, 25).every(v => v === null), true);
+  assert.equal(m.signal.slice(0, 33).every(v => v === null), true);
+  assert.equal(Number.isFinite(m.signal[33]), true);
+});
+
+test("RL calculations are causal: an earlier signal is unchanged by later candles", () => {
+  const rows = Array.from({ length: 280 }, (_, i) => {
+    const c = i < 215 ? 100 : 100 + (i - 215) * 0.28 + Math.sin(i / 3) * 0.12;
+    return row(i * 60000, c - 0.06, c + 0.25, c - 0.30, c, 1200);
+  });
+  const whole = I.rlSignals(rows);
+  const prefix = I.rlSignals(rows.slice(0, 230));
+  assert.deepEqual(whole.slice(0, 230), prefix);
+});
+
+test("Wilder ATR is null until it has a full valid seed", () => {
+  const rows = Array.from({ length: 20 }, (_, i) => row(i, 10, 11, 9, 10));
+  const result = I.atr(rows, 14);
+  assert.equal(result.slice(0, 13).every(v => v === null), true);
+  assert.equal(result[13], 2);
+});
