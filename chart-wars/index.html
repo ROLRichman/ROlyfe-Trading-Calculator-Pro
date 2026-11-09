@@ -668,19 +668,27 @@ function updateQuoteLine(){
  if(!chartState.candle||!quote||quote.symbol!==symbolValue())return;
  chartState.quoteLine=chartState.candle.createPriceLine({price:quote.price,color:"#ffad66",lineWidth:2,lineStyle:2,axisLabelVisible:true,title:"FINNHUB"});
 }
-function renderChart(series,hiddenCount=0){
- const rows=series.filter(x=>Number.isFinite(x.time)&&x.time>0&&[x.open,x.high,x.low,x.close].every(Number.isFinite));if(!rows.length){$('chart').textContent='No candles to display.';return;}
- chartState.lastData=rows;const chart=ensureChart(),sel=chosen(),closes=rows.map(x=>x.close);
+function renderChart(series,hiddenCount=0,calculationSeries=null){
+ const rows=series.filter(x=>Number.isFinite(x.time)&&x.time>0&&[x.open,x.high,x.low,x.close].every(Number.isFinite));
+ if(!rows.length){$('chart').textContent='No candles to display.';return;}
+ const context=calculationContext(rows,calculationSeries),calcRows=context.rows,offset=context.offset;
+ chartState.lastData=rows;const chart=ensureChart(),sel=chosen(),closes=calcRows.map(x=>x.close);
+ const clip=values=>values.slice(offset,offset+rows.length);
  chartState.candle.setData(rows.map(r=>({time:sec(r.time),open:r.open,high:r.high,low:r.low,close:r.close})));
  updateQuoteLine();
  chartState.volume.setData(sel.volume?rows.map(r=>({time:sec(r.time),value:Math.max(0,r.volume),color:r.close>=r.open?'rgba(52,141,112,.72)':'rgba(168,79,91,.72)'})):[]);
  clearLines();
- [['ema200',200],['ema50',50],['ema20',20],['ema10',10],['ema5',5]].forEach(([k,p])=>{if(sel[k])addLine(k,rows,ema(closes,p),colors[k]);});
- if(sel.vwap)addLine('vwap',rows,vwap(rows),colors.vwap,2);
- if(sel.hma31)addLine('hma31',rows,hma(closes,31),colors.hma31,2);
- if(sel.hma32)addLine('hma32',rows,hma(closes,32),colors.hma32,2);
- if(sel.rlband){const base=ema(closes,20),range=atrs(rows);addLine('rlUpper',rows,base.map((v,i)=>v+range[i]*1.5),colors.rl,1);addLine('rlLower',rows,base.map((v,i)=>v-range[i]*1.5),colors.rl,1);}
- chartState.candle.setMarkers(sel.pps?ppsMarkers(rows):[]);
+ [['ema200',200],['ema50',50],['ema20',20],['ema10',10],['ema5',5]].forEach(([k,p])=>{if(sel[k])addLine(k,rows,clip(ema(closes,p)),colors[k]);});
+ if(sel.vwap)addLine('vwap',rows,clip(vwap(calcRows)),colors.vwap,2);
+ if(sel.hma31)addLine('hma31',rows,clip(hma(closes,31)),colors.hma31,2);
+ if(sel.hma32)addLine('hma32',rows,clip(hma(closes,32)),colors.hma32,2);
+ if(sel.rlband){
+  const base=ema(closes,20),range=atrs(calcRows,14);
+  addLine('rlUpper',rows,clip(base.map((v,i)=>Number.isFinite(v)&&Number.isFinite(range[i])?v+range[i]*1.5:null)),colors.rl,1);
+  addLine('rlLower',rows,clip(base.map((v,i)=>Number.isFinite(v)&&Number.isFinite(range[i])?v-range[i]*1.5:null)),colors.rl,1);
+ }
+ const events=$('rlEngineEnabled').checked?rlSignals(calcRows):[];
+ chartState.candle.setMarkers(sel.pps?rlMarkers(rows,events,offset):[]);
  chart.timeScale().fitContent();chart.timeScale().applyOptions({rightOffset:hiddenCount?hiddenCount+3:6});
 }
 function setChartSize(size){const heights={compact:280,standard:460,large:640};chartState.size=size;const h=heights[size]||460;document.querySelector('.chartwrap').style.setProperty('--chart-height',h+'px');document.querySelectorAll('[data-chart-size]').forEach(b=>b.classList.toggle('active',b.dataset.chartSize===size));if(chartState.chart)chartState.chart.applyOptions({height:h});}
