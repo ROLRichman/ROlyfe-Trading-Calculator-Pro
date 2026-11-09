@@ -33,9 +33,9 @@ test("stop orders honor intrabar high/low and gap-through slippage", () => {
   const buy = P.evaluateReplayOrder({ type: "stop", side: "buy", triggerPrice: 100, slippageBps: 10 }, { open: 102, high: 104, low: 99, close: 103 });
   const sell = P.evaluateReplayOrder({ type: "stop", side: "sell", triggerPrice: 100, slippageBps: 10 }, { open: 98, high: 101, low: 96, close: 97 });
   assert.equal(buy.stopReference, 102);
-  assert.equal(buy.fill, 102.102);
+  assert.ok(Math.abs(buy.fill - 102.102) < 1e-9);
   assert.equal(sell.stopReference, 98);
-  assert.equal(sell.fill, 97.902);
+  assert.ok(Math.abs(sell.fill - 97.902) < 1e-9);
 });
 
 test("pending order remains unfilled when candle does not touch trigger", () => {
