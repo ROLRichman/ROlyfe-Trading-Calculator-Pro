@@ -372,15 +372,29 @@ function replayBar(row){
  }
  processReplayPendingOrders(row);
 }
+function replayOrderTrigger(order,row){
+ const trigger=Number(order.triggerPrice),high=Number(row.high),low=Number(row.low);
+ if(!Number.isFinite(trigger)||!Number.isFinite(high)||!Number.isFinite(low))return false;
+ if(order.type==='limit')return order.side==='buy'?low<=trigger:high>=trigger;
+ if(order.type==='stop')return order.side==='buy'?high>=trigger:low<=trigger;
+ return false;
+}
+function replayOrderFill(order,row){
+ const trigger=Number(order.triggerPrice),open=Number(row.open),close=Number(row.close);
+ const slippage=(order.slippageBps||DEFAULT_SLIPPAGE_BPS)/10000;
+ if(order.type==='limit'){
+  const price=order.side==='buy'?(open<=trigger?open:trigger):(open>=trigger?open:trigger);
+  return {reference:trigger,fill:price};
+ }
+ const stopReference=order.side==='buy'?Math.max(open,trigger):Math.min(open,trigger);
+ return {reference:trigger,fill:stopReference*(1+(order.side==='buy'?1:-1)*slippage)};
+}
 function processReplayPendingOrders(row){
  const sym=symbolValue(),keep=[];let changed=false;
  for(const order of account.pending){
-  if(order.symbol!==sym||order.source!=='historical_replay'||!orderTriggered(order,Number(row.close))){keep.push(order);continue;}
-  const reference=Number(row.close),slippage=(order.slippageBps||DEFAULT_SLIPPAGE_BPS)/10000;
-  const fillPrice=order.type==='limit'
-   ? (order.side==='buy'?Math.min(reference,order.triggerPrice):Math.max(reference,order.triggerPrice))
-   : reference*(1+(order.side==='buy'?1:-1)*slippage);
-  if(!fillOrder(order,reference,fillPrice,row.time)){keep.push(order);}else changed=true;
+  if(order.symbol!==sym||order.source!=='historical_replay'||!replayOrderTrigger(order,row)){keep.push(order);continue;}
+  const fill=replayOrderFill(order,row);
+  if(!fillOrder(order,fill.reference,fill.fill,row.time)){keep.push(order);}else changed=true;
  }
  account.pending=keep;
  if(changed){saveAccount();renderTradingTables();}
