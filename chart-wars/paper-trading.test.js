@@ -58,3 +58,10 @@ test("reject invalid position sizes and prices", () => {
   assert.throws(() => P.realizedPnl(100, 100, -1), /Quantity/);
   assert.throws(() => P.notional(-10, 1), /positive/);
 });
+
+test("quote-based market, limit and stop orders use the same validated slippage math", () => {
+  assert.equal(P.evaluateQuoteOrder({ type: "market", side: "buy", slippageBps: 10 }, 100).fill, 100.1);
+  assert.equal(P.evaluateQuoteOrder({ type: "limit", side: "buy", triggerPrice: 101 }, 100).fill, 100);
+  assert.equal(P.evaluateQuoteOrder({ type: "stop", side: "sell", triggerPrice: 101, slippageBps: 10 }, 100).fill, 99.9);
+  assert.equal(P.evaluateQuoteOrder({ type: "limit", side: "buy", triggerPrice: 99 }, 100), null);
+});
