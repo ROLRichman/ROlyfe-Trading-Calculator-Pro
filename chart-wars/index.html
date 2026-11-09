@@ -789,7 +789,7 @@ function drawOscillators(rows,sel,contextRows,offset){
   const value=document.createElement('strong');
   const last=values[values.length-1];
   value.textContent=number(last,k==='atr'?3:2);
-  if(k==='ttm')value.textContent+=' · '+(squeeze.squeezeOn[contextRows.length-1]?'SQUEEZE ON':squeeze.squeezeRelease[contextRows.length-1]?'SQUEEZE RELEASE':'SQUEEZE OFF');
+  if(k==='ttm')value.textContent+=' · '+(!squeeze.ready[contextRows.length-1]?'WARMING UP':squeeze.squeezeOn[contextRows.length-1]?'SQUEEZE ON':squeeze.squeezeRelease[contextRows.length-1]?'SQUEEZE RELEASE':'SQUEEZE OFF');
   if(k==='stoch')value.textContent=number(st.k[contextRows.length-1],1)+' / '+number(st.d[contextRows.length-1],1);
   head.append(name,value);
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 600 68');
