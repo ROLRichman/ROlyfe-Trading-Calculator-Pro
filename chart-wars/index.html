@@ -533,9 +533,11 @@ function renderStrategyPlans(){
  table.innerHTML='<thead><tr><th>Symbol / Plan</th><th>Entry</th><th>Last quote</th><th>Stop / Target</th><th>Virtual P/L</th><th>Status / Last check</th><th></th></tr></thead>';
  const body=document.createElement('tbody');
  strategyPlans.slice().reverse().forEach(plan=>{
-  const tr=document.createElement('tr'),pnl=Number.isFinite(Number(plan.lastPrice))?(Number(plan.lastPrice)-plan.entry)*plan.shares:null;
+  const tr=document.createElement('tr');
+  const hasQuote=plan.lastPrice!==null&&plan.lastPrice!==undefined&&Number.isFinite(Number(plan.lastPrice));
+  const pnl=hasQuote?(Number(plan.lastPrice)-plan.entry)*plan.shares:null;
   const status=plan.status==='watching'?'WATCHING':plan.status==='target_hit'?'TARGET TOUCHED':plan.status==='stop_hit'?'STOP TOUCHED':'CLOSED';
-  const cells=[plan.symbol+(plan.note?' · '+plan.note:''),money(plan.entry),Number.isFinite(Number(plan.lastPrice))?money(plan.lastPrice):'Not checked',money(plan.stop)+' / '+money(plan.target),pnl===null?'—':money(pnl),status+(plan.lastChecked?' · '+timeLabel(plan.lastChecked):' · Not checked')];
+  const cells=[plan.symbol+(plan.note?' · '+plan.note:''),money(plan.entry),hasQuote?money(plan.lastPrice):'Not checked',money(plan.stop)+' / '+money(plan.target),pnl===null?'—':money(pnl),status+(plan.lastChecked?' · '+timeLabel(plan.lastChecked):' · Not checked')];
   cells.forEach((value,index)=>{const td=document.createElement('td');td.textContent=value;if(index===4&&pnl!==null)td.className=pnl>=0?'positive':'negative';tr.append(td);});
   const action=document.createElement('td'),remove=document.createElement('button');remove.className='btn danger';remove.textContent='Remove';
   remove.addEventListener('click',()=>{strategyPlans=strategyPlans.filter(x=>x.id!==plan.id);saveStrategyPlans();renderStrategyPlans();});
@@ -944,8 +946,10 @@ $('lockReveal').addEventListener('click',()=>{
  else account.game.streak=0;
  account.predictions.push({at:Date.now(),symbol:symbolValue(),interval:intervalValue(),pick:selectedPick,actual:outcome.direction,correct,pct:outcome.pct}); account.predictions=account.predictions.slice(-500);
  saveAccount();
+ const revealedEnd=Math.min(bars.length,gameRound.endIndex+3);
+ if(revealedEnd>historyEndIndex)processReplayAdvance(historyEndIndex,revealedEnd);
  renderChart(gameRound.visible.concat(gameRound.future),0,bars);renderIndicators(gameRound.visible.concat(gameRound.future),bars);
- historyEndIndex=Math.min(bars.length,gameRound.endIndex+3);rlAutoProcessedIndex=Math.max(rlAutoProcessedIndex,historyEndIndex);updateReplayControls();updateHeaderMarket();
+ historyEndIndex=revealedEnd;rlAutoProcessedIndex=Math.max(rlAutoProcessedIndex,historyEndIndex);updateReplayControls();updateHeaderMarket();
  $('lockReveal').disabled=true;$('nextRound').disabled=false;
  const line=(correct?'Correct call · +100 points. ':'Not this time · 0 points. ')+'You chose '+selectedPick.toUpperCase()+'. The next three historical bars were '+outcome.direction.toUpperCase()+' ('+(outcome.pct>=0?'+':'')+number(outcome.pct,2)+'%).';
  $('gameFeedback').textContent=line;$('gameFeedback').className='feedback '+(correct?'good':'bad');
