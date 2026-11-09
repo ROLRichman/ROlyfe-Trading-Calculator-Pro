@@ -601,13 +601,68 @@ function ensureChart(){
 }
 function clearLines(){Object.values(chartState.series).forEach(s=>{try{chartState.chart.removeSeries(s);}catch{}});chartState.series={};}
 function addLine(key,rows,values,color,width=2){const s=chartState.chart.addLineSeries({color,lineWidth:width,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});s.setData(toPoints(rows,values));chartState.series[key]=s;}
-function ppsMarkers(rows){const c=rows.map(x=>x.close),a=ema(c,5),b=ema(c,20),out=[];for(let i=1;i<rows.length;i++){if(a[i]>b[i]&&a[i-1]<=b[i-1])out.push({time:sec(rows[i].time),position:'belowBar',color:'#59e1aa',shape:'arrowUp',text:'RL+'});if(a[i]<b[i]&&a[i-1]>=b[i-1])out.push({time:sec(rows[i].time),position:'aboveBar',color:'#ff7e86',shape:'arrowDown',text:'RL−'});}return out;}
-function drawOscillators(rows,sel){
- const host=$('indicatorPanels');host.replaceChildren();const c=rows.map(x=>x.close),m=macds(c);
- const sets={rsi:['RSI 14',rsis(c),'#80c7ff',0,100],macd:['MACD histogram',m.hist,'#59e1aa',null,null],stoch:['Stochastic %K',stoch(rows),'#f5cc78',0,100],cci:['CCI 20',cci(rows),'#d5e85b',-200,200],ttm:['TTM momentum',ttm(rows),'#d7a6ff',null,null],atr:['ATR 14',atrs(rows),'#ff9d75',0,null]};
- Object.keys(sets).filter(k=>sel[k]).forEach(k=>{const [title,values,color,min,max]=sets[k],valid=values.filter(Number.isFinite);if(!valid.length)return;const lo=min===null?Math.min(...valid):min,hi=max===null?Math.max(...valid):max,span=hi-lo||1;const path=values.map((v,i)=>Number.isFinite(v)?[i/Math.max(1,values.length-1)*600,58-(v-lo)/span*48]:null).filter(Boolean).map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');const panel=document.createElement('div');panel.className='osc-panel';const head=document.createElement('div');head.className='osc-head';const name=document.createElement('span');name.textContent=title;const value=document.createElement('strong');value.textContent=number(valid[valid.length-1],k==='atr'?3:2);head.append(name,value);const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 600 68');const line=document.createElementNS('http://www.w3.org/2000/svg','path');line.setAttribute('d',path);line.setAttribute('fill','none');line.setAttribute('stroke',color);line.setAttribute('stroke-width','2.4');svg.append(line);panel.append(head,svg);host.append(panel);});
+function rlMarkers(rows,events,offset){
+ const markers=[];
+ events.forEach((event,index)=>{
+  if(!event||index<offset||index>=offset+rows.length)return;
+  if(event.type==='buy')markers.push({time:sec(rows[index-offset].time),position:'belowBar',color:'#59e1aa',shape:'arrowUp',text:'RL BUY'});
+  if(event.type==='exit')markers.push({time:sec(rows[index-offset].time),position:'aboveBar',color:'#ff7e86',shape:'arrowDown',text:'RL EXIT'});
+ });
+ return markers;
 }
-function renderIndicators(series){const v=calcIndicators(series);setText('ema20',Number.isFinite(v.ema20)?number(v.ema20):'—');setText('ema50',Number.isFinite(v.ema50)?number(v.ema50):'—');setText('rsi',Number.isFinite(v.rsi)?number(v.rsi,1):'—');setText('macd',v.macd?number(v.macd.hist,3):'—');drawOscillators(series,chosen());}
+function drawOscillators(rows,sel,contextRows,offset){
+ const host=$('indicatorPanels');host.replaceChildren();
+ const closes=contextRows.map(x=>x.close),m=macds(closes),st=stochastic(contextRows,14,3,3),squeeze=ttm(contextRows),atrValues=atrs(contextRows,14);
+ const clip=values=>values.slice(offset,offset+rows.length);
+ const sets={
+  rsi:['RSI 14 · Wilder',clip(rsis(closes,14)),'#80c7ff',0,100],
+  macd:['MACD 12 / 26 / 9 · Histogram',clip(m.histogram),'#59e1aa',null,null],
+  stoch:['Stochastic 14 / 3 / 3 · %K',clip(st.k),'#f5cc78',0,100],
+  cci:['CCI 20',clip(cci(contextRows,20)),'#d5e85b',-200,200],
+  ttm:['TTM Squeeze · Momentum',clip(squeeze.momentum),'#d7a6ff',null,null],
+  atr:['ATR 14 · Wilder',clip(atrValues),'#ff9d75',0,null]
+ };
+ Object.keys(sets).filter(k=>sel[k]).forEach(k=>{
+  const [title,values,color,min,max]=sets[k],valid=values.filter(Number.isFinite);
+  if(!valid.length)return;
+  const lo=min===null?Math.min(...valid):min,hi=max===null?Math.max(...valid):max,span=hi-lo||1;
+  const path=values.map((v,i)=>Number.isFinite(v)?[i/Math.max(1,values.length-1)*600,58-(v-lo)/span*48]:null)
+   .filter(Boolean).map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  const panel=document.createElement('div');panel.className='osc-panel';
+  const head=document.createElement('div');head.className='osc-head';
+  const name=document.createElement('span');name.textContent=title;
+  const value=document.createElement('strong');
+  const last=values[values.length-1];
+  value.textContent=number(last,k==='atr'?3:2);
+  if(k==='ttm')value.textContent+=' · '+(squeeze.squeezeOn[contextRows.length-1]?'SQUEEZE ON':squeeze.squeezeOff[contextRows.length-1]?'SQUEEZE RELEASE':'NO SQUEEZE');
+  if(k==='stoch')value.textContent=number(st.k[contextRows.length-1],1)+' / '+number(st.d[contextRows.length-1],1);
+  head.append(name,value);
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 600 68');
+  const line=document.createElementNS('http://www.w3.org/2000/svg','path');line.setAttribute('d',path);line.setAttribute('fill','none');line.setAttribute('stroke',color);line.setAttribute('stroke-width','2.4');svg.append(line);
+  panel.append(head,svg);host.append(panel);
+ });
+}
+function renderIndicators(series,calculationSeries){
+ const visible=series.filter(x=>Number.isFinite(x.time)&&x.time>0&&[x.open,x.high,x.low,x.close].every(Number.isFinite));
+ if(!visible.length)return;
+ const context=calculationContext(visible,calculationSeries),rows=context.rows,offset=context.offset;
+ const v=calcIndicators(rows),signals=rlSignals(rows),lastSignal=signals[signals.length-1];
+ setText('ema20',Number.isFinite(v.ema20)?number(v.ema20):'—');
+ setText('ema50',Number.isFinite(v.ema50)?number(v.ema50):'—');
+ setText('rsi',Number.isFinite(v.rsi)?number(v.rsi,1):'—');
+ setText('macd',Number.isFinite(v.macd)?number(v.macd,3):'—');
+ const status=$('rlStatus');
+ if(status){
+  status.className='rl-status'+(lastSignal?.type==='buy'?' buy':lastSignal?.type==='exit'?' exit':'');
+  status.textContent=!$('rlEngineEnabled').checked?'RL analysis disabled · Turn it on to view confirmed trend/pullback signals.':
+   lastSignal?.type==='buy'?'RL BUY confirmed · '+lastSignal.reason:
+   lastSignal?.type==='exit'?'RL EXIT confirmed · '+lastSignal.reason:
+   lastSignal?.type==='trend_up'?'EMA 200 trend changed UP · waiting for pullback/reclaim confirmation.':
+   lastSignal?.type==='trend_down'?'EMA 200 trend changed DOWN · long entries are filtered.':
+   'No new RL trigger on the latest completed candle. EMA 200 trend filter and pullback confirmation are active.';
+ }
+ drawOscillators(visible,chosen(),rows,offset);
+}
 function updateQuoteLine(){
  if(chartState.quoteLine&&chartState.candle){try{chartState.candle.removePriceLine(chartState.quoteLine);}catch{}chartState.quoteLine=null;}
  if(!chartState.candle||!quote||quote.symbol!==symbolValue())return;
