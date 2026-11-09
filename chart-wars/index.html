@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#07111d">
 <script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
 <script src="./indicators.js"></script>
+<script src="./paper-trading.js"></script>
 <title>RO’Lyfe Chart Wars™ · Trading Arena</title>
 <style>
 :root{color-scheme:dark;--bg:#07111d;--panel:#101e2d;--panel2:#0b1724;--line:#263b4d;--muted:#9fb3c7;--green:#59e1aa;--red:#ff7e86;--gold:#f5cc78;--blue:#80c7ff}
@@ -330,7 +331,9 @@ const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_FaJPNdtRsZTemxpbp98F2g_U9ngkFaG
 const SUPABASE_LEGACY_ANON_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbWR5ZmJrbHZ1b3NlcWRqbnh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3ODk5OTQsImV4cCI6MjEwODM2NTk5NH0._YEZj2GSnPcLGXmwgj98V_JzXdJIhTmOFoAH9BSia2I";
 const FUNCTION_URL = SUPABASE_URL + '/functions/v1/market-data';
 const IND = window.ROLyfeIndicators;
+const PM = window.ROLyfePaperMath;
 if (!IND) throw new Error('Chart Wars indicator calculation module failed to load.');
+if (!PM) throw new Error('Chart Wars paper trading calculation module failed to load.');
 const BAR_CACHE_PREFIX = 'rolyfe.pro.chart-bars.v2:';
 const BAR_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const QUOTE_CACHE_TTL_MS = 15000;
@@ -389,23 +392,8 @@ function replayBar(row){
  }
  processReplayPendingOrders(row);
 }
-function replayOrderTrigger(order,row){
- const trigger=Number(order.triggerPrice),high=Number(row.high),low=Number(row.low);
- if(!Number.isFinite(trigger)||!Number.isFinite(high)||!Number.isFinite(low))return false;
- if(order.type==='limit')return order.side==='buy'?low<=trigger:high>=trigger;
- if(order.type==='stop')return order.side==='buy'?high>=trigger:low<=trigger;
- return false;
-}
-function replayOrderFill(order,row){
- const trigger=Number(order.triggerPrice),open=Number(row.open),close=Number(row.close);
- const slippage=(order.slippageBps||DEFAULT_SLIPPAGE_BPS)/10000;
- if(order.type==='limit'){
-  const price=order.side==='buy'?(open<=trigger?open:trigger):(open>=trigger?open:trigger);
-  return {reference:trigger,fill:price};
- }
- const stopReference=order.side==='buy'?Math.max(open,trigger):Math.min(open,trigger);
- return {reference:trigger,fill:stopReference*(1+(order.side==='buy'?1:-1)*slippage)};
-}
+function replayOrderTrigger(order,row){return PM.evaluateReplayOrder(order,row)!==null;}
+function replayOrderFill(order,row){return PM.evaluateReplayOrder(order,row);}
 function processReplayPendingOrders(row){
  const sym=symbolValue(),keep=[];let changed=false;
  for(const order of account.pending){
@@ -427,11 +415,11 @@ function processReplayAdvance(fromEnd,toEnd){
   if(!autoOn)continue;
   const signal=events[i],position=account.positions[symbolValue()];
   if(signal?.type==='buy'&&!position){
-   const fill=signal.price*(1+DEFAULT_SLIPPAGE_BPS/10000);
+   const fill=PM.slippageFill(signal.price,'buy',DEFAULT_SLIPPAGE_BPS);
    const order={id:'rl-'+row.time+'-buy',symbol:symbolValue(),side:'buy',quantity:shareCount,type:'market',slippageBps:DEFAULT_SLIPPAGE_BPS,source:'historical_replay',strategy:'RL'};
    if(fillOrder(order,signal.price,fill,row.time)&&$('rlSignalSound').checked)soundCue('win',true);
   }else if(signal?.type==='exit'&&position&&position.strategy==='RL'){
-   const fill=signal.price*(1-DEFAULT_SLIPPAGE_BPS/10000);
+   const fill=PM.slippageFill(signal.price,'sell',DEFAULT_SLIPPAGE_BPS);
    const order={id:'rl-'+row.time+'-exit',symbol:symbolValue(),side:'sell',quantity:position.quantity,type:'market',slippageBps:DEFAULT_SLIPPAGE_BPS,source:'historical_replay'};
    if(fillOrder(order,signal.price,fill,row.time)&&$('rlSignalSound').checked)soundCue('error',true);
   }
@@ -956,14 +944,7 @@ $('lockReveal').addEventListener('click',()=>{
 });
 $('nextRound').addEventListener('click',()=>{if(gameRound){historyEndIndex=Math.min(bars.length-3,gameRound.endIndex+3);rlAutoProcessedIndex=Math.max(rlAutoProcessedIndex,historyEndIndex);}startGameRound();});
 function portfolioValues(){
- let marketValue=0,unrealized=0;
- Object.values(account.positions).forEach(pos=>{
-  const mark=Number(pos.mark)>0?Number(pos.mark):Number(pos.avgCost);
-  marketValue+=pos.quantity*mark;
-  unrealized+=(mark-pos.avgCost)*pos.quantity;
- });
- const realized=account.trades.reduce((sum,t)=>sum+(Number(t.realizedPnl)||0),0);
- return {equity:account.cash+marketValue,marketValue,unrealized,realized};
+ return PM.portfolioSummary(account.cash,account.positions,account.trades);
 }
 function renderAccount(){
  const v=portfolioValues();
@@ -1041,15 +1022,15 @@ function renderTradingTables(){
 }
 function setOrderFeedback(message,kind=''){const el=$('orderFeedback');el.textContent=message;el.className='feedback'+(kind?' '+kind:'');}
 function fillOrder(order,referencePrice,fillPrice,sourceTimestamp){
- const fee=0,notional=fillPrice*order.quantity,position=account.positions[order.symbol],historical=order.source==='historical_replay';
+ const fee=0,notional=PM.notional(fillPrice,order.quantity),position=account.positions[order.symbol],historical=order.source==='historical_replay';
  if(order.side==='buy'){
   if(notional+fee>account.cash){setOrderFeedback('Insufficient virtual cash. Reduce the share quantity or reset the practice account.','bad');return false;}
-  const oldQty=position?.quantity||0,oldCost=position?.avgCost||0,newQty=oldQty+order.quantity;
+  const oldQty=position?.quantity||0,oldCost=position?.avgCost||0;
   account.cash-=notional+fee;
-  account.positions[order.symbol]={symbol:order.symbol,quantity:newQty,avgCost:((oldQty*oldCost)+notional+fee)/newQty,mark:historical?fillPrice:(quote?.symbol===order.symbol?quote.price:(position?.mark||fillPrice)),markAt:sourceTimestamp||Date.now(),markSource:historical?'historical_replay':'live_quote',strategy:order.strategy||position?.strategy||null,openedAt:position?.openedAt||sourceTimestamp||Date.now()};
+  account.positions[order.symbol]={symbol:order.symbol,quantity:oldQty+order.quantity,avgCost:PM.weightedAverageCost(oldQty,oldCost,order.quantity,fillPrice,fee),mark:historical?fillPrice:(quote?.symbol===order.symbol?quote.price:(position?.mark||fillPrice)),markAt:sourceTimestamp||Date.now(),markSource:historical?'historical_replay':'live_quote',strategy:order.strategy||position?.strategy||null,openedAt:position?.openedAt||sourceTimestamp||Date.now()};
  }else{
   if(!position||position.quantity<order.quantity){setOrderFeedback('Sell order not filled: the virtual account does not hold enough shares.','bad');return false;}
-  const realized=(fillPrice-position.avgCost)*order.quantity-fee;
+  const realized=PM.realizedPnl(fillPrice,position.avgCost,order.quantity,fee);
   account.cash+=notional-fee;
   position.quantity-=order.quantity;position.mark=historical?fillPrice:(quote?.symbol===order.symbol?quote.price:fillPrice);position.markAt=sourceTimestamp||Date.now();
   if(position.quantity===0)delete account.positions[order.symbol];
@@ -1070,9 +1051,9 @@ function processPendingOrders(){
  if(!quote||quote.symbol!==symbolValue())return;
  const keep=[];
  for(const order of account.pending){
-  if(order.symbol!==quote.symbol||order.source==='historical_replay'||!orderTriggered(order,quote.price)){keep.push(order);continue;}
-  const fillPrice=order.type==='limit'?(order.side==='buy'?Math.min(quote.price,order.triggerPrice):Math.max(quote.price,order.triggerPrice)):quote.price*(1+(order.side==='buy'?1:-1)*(order.slippageBps||DEFAULT_SLIPPAGE_BPS)/10000);
-  if(!fillOrder(order,quote.price,fillPrice,quote.timestamp)){keep.push(order);}
+  if(order.symbol!==quote.symbol||order.source==='historical_replay'){keep.push(order);continue;}
+  const evaluated=PM.evaluateQuoteOrder(order,quote.price);
+  if(!evaluated||!fillOrder(order,evaluated.reference,evaluated.fill,quote.timestamp)){keep.push(order);}
  }
  account.pending=keep;saveAccount();renderTradingTables();
 }
@@ -1091,11 +1072,11 @@ $('placeOrder').addEventListener('click',()=>{
  }
  if(source==='replay'){
   if(!replayBarNow||!Number.isFinite(Number(replayBarNow.close))){setOrderFeedback('Load historical candles and select a visible replay candle before placing a replay paper order.','bad');return;}
-  const reference=Number(replayBarNow.close),fill=reference*(1+(side==='buy'?1:-1)*slippage/10000);
+  const reference=Number(replayBarNow.close),fill=PM.slippageFill(reference,side,slippage);
   fillOrder(order,reference,fill,replayBarNow.time);
  }else{
   if(!quote||quote.symbol!==sym){setOrderFeedback('Load a Finnhub provider quote for '+sym+' before placing a quote-based paper order.','bad');return;}
-  const fill=quote.price*(1+(side==='buy'?1:-1)*slippage/10000);
+  const fill=PM.slippageFill(quote.price,side,slippage);
   fillOrder(order,quote.price,fill,quote.timestamp);
  }
 });
