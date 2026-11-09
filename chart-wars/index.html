@@ -411,9 +411,9 @@ function processReplayAdvance(fromEnd,toEnd){
   const signal=events[i],position=account.positions[symbolValue()];
   if(signal?.type==='buy'&&!position){
    const fill=signal.price*(1+DEFAULT_SLIPPAGE_BPS/10000);
-   const order={id:'rl-'+row.time+'-buy',symbol:symbolValue(),side:'buy',quantity:shareCount,type:'market',slippageBps:DEFAULT_SLIPPAGE_BPS,source:'historical_replay'};
+   const order={id:'rl-'+row.time+'-buy',symbol:symbolValue(),side:'buy',quantity:shareCount,type:'market',slippageBps:DEFAULT_SLIPPAGE_BPS,source:'historical_replay',strategy:'RL'};
    if(fillOrder(order,signal.price,fill,row.time)&&$('rlSignalSound').checked)soundCue('win',true);
-  }else if(signal?.type==='exit'&&position){
+  }else if(signal?.type==='exit'&&position&&position.strategy==='RL'){
    const fill=signal.price*(1-DEFAULT_SLIPPAGE_BPS/10000);
    const order={id:'rl-'+row.time+'-exit',symbol:symbolValue(),side:'sell',quantity:position.quantity,type:'market',slippageBps:DEFAULT_SLIPPAGE_BPS,source:'historical_replay'};
    if(fillOrder(order,signal.price,fill,row.time)&&$('rlSignalSound').checked)soundCue('error',true);
@@ -701,7 +701,7 @@ function drawOscillators(rows,sel,contextRows,offset){
   const value=document.createElement('strong');
   const last=values[values.length-1];
   value.textContent=number(last,k==='atr'?3:2);
-  if(k==='ttm')value.textContent+=' · '+(squeeze.squeezeOn[contextRows.length-1]?'SQUEEZE ON':squeeze.squeezeOff[contextRows.length-1]?'SQUEEZE RELEASE':'NO SQUEEZE');
+  if(k==='ttm')value.textContent+=' · '+(squeeze.squeezeOn[contextRows.length-1]?'SQUEEZE ON':squeeze.squeezeRelease[contextRows.length-1]?'SQUEEZE RELEASE':'SQUEEZE OFF');
   if(k==='stoch')value.textContent=number(st.k[contextRows.length-1],1)+' / '+number(st.d[contextRows.length-1],1);
   head.append(name,value);
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 600 68');
@@ -954,7 +954,7 @@ function fillOrder(order,referencePrice,fillPrice,sourceTimestamp){
   if(notional+fee>account.cash){setOrderFeedback('Insufficient virtual cash. Reduce the share quantity or reset the practice account.','bad');return false;}
   const oldQty=position?.quantity||0,oldCost=position?.avgCost||0,newQty=oldQty+order.quantity;
   account.cash-=notional+fee;
-  account.positions[order.symbol]={symbol:order.symbol,quantity:newQty,avgCost:((oldQty*oldCost)+notional+fee)/newQty,mark:historical?fillPrice:(quote?.symbol===order.symbol?quote.price:(position?.mark||fillPrice)),markAt:sourceTimestamp||Date.now(),markSource:historical?'historical_replay':'live_quote',openedAt:position?.openedAt||sourceTimestamp||Date.now()};
+  account.positions[order.symbol]={symbol:order.symbol,quantity:newQty,avgCost:((oldQty*oldCost)+notional+fee)/newQty,mark:historical?fillPrice:(quote?.symbol===order.symbol?quote.price:(position?.mark||fillPrice)),markAt:sourceTimestamp||Date.now(),markSource:historical?'historical_replay':'live_quote',strategy:order.strategy||position?.strategy||null,openedAt:position?.openedAt||sourceTimestamp||Date.now()};
  }else{
   if(!position||position.quantity<order.quantity){setOrderFeedback('Sell order not filled: the virtual account does not hold enough shares.','bad');return false;}
   const realized=(fillPrice-position.avgCost)*order.quantity-fee;
@@ -963,7 +963,7 @@ function fillOrder(order,referencePrice,fillPrice,sourceTimestamp){
   if(position.quantity===0)delete account.positions[order.symbol];
   order.realizedPnl=realized;
  }
- const completed={id:order.id,at:Date.now(),symbol:order.symbol,side:order.side,quantity:order.quantity,fillPrice,referencePrice,fee,slippageBps:order.slippageBps||0,realizedPnl:order.realizedPnl||0,holdMs:order.side==='sell'&&position?Math.max(0,(sourceTimestamp||Date.now())-position.openedAt):0,sourceTimestamp:sourceTimestamp||null,type:order.type,source:historical?'historical_replay':'finnhub_quote'};
+ const completed={id:order.id,at:Date.now(),symbol:order.symbol,side:order.side,quantity:order.quantity,fillPrice,referencePrice,fee,slippageBps:order.slippageBps||0,realizedPnl:order.realizedPnl||0,holdMs:order.side==='sell'&&position?Math.max(0,(sourceTimestamp||Date.now())-position.openedAt):0,sourceTimestamp:sourceTimestamp||null,type:order.type,source:historical?'historical_replay':'finnhub_quote',strategy:order.strategy||position?.strategy||null};
  account.trades.push(completed);account.trades=account.trades.slice(-500);
  saveAccount();renderTradingTables();renderAccount();
  setOrderFeedback(order.side.toUpperCase()+' '+order.quantity+' '+order.symbol+' paper-filled at '+money(fillPrice)+' against '+(historical?'historical replay candle':'Finnhub reference quote')+' '+money(referencePrice)+'. No broker order was sent.','good');
