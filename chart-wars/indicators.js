@@ -103,22 +103,31 @@
 
   function rsi(values, period = 14) {
     const p = periodOf(period), out = Array(values.length).fill(null);
-    if (values.length <= p) return out;
-    let gain = 0, loss = 0;
-    for (let i = 1; i <= p; i++) {
-      const delta = Number(values[i]) - Number(values[i - 1]);
-      if (!Number.isFinite(delta)) return out;
-      if (delta > 0) gain += delta; else loss -= delta;
-    }
-    let avgGain = gain / p, avgLoss = loss / p;
     const valueOf = (g, l) => g === 0 && l === 0 ? 50 : l === 0 ? 100 : 100 - 100 / (1 + g / l);
-    out[p] = valueOf(avgGain, avgLoss);
-    for (let i = p + 1; i < values.length; i++) {
-      const delta = Number(values[i]) - Number(values[i - 1]);
-      if (!Number.isFinite(delta)) { avgGain = 0; avgLoss = 0; continue; }
-      avgGain = (avgGain * (p - 1) + Math.max(0, delta)) / p;
-      avgLoss = (avgLoss * (p - 1) + Math.max(0, -delta)) / p;
-      out[i] = valueOf(avgGain, avgLoss);
+    let previous = null, seedGain = 0, seedLoss = 0, seedCount = 0;
+    let avgGain = null, avgLoss = null;
+    for (let i = 0; i < values.length; i++) {
+      const current = numeric(values[i]);
+      if (!Number.isFinite(current)) {
+        previous = null; seedGain = 0; seedLoss = 0; seedCount = 0;
+        avgGain = null; avgLoss = null;
+        continue;
+      }
+      if (previous === null) { previous = current; continue; }
+      const delta = current - previous;
+      previous = current;
+      const gain = Math.max(0, delta), loss = Math.max(0, -delta);
+      if (avgGain === null || avgLoss === null) {
+        seedGain += gain; seedLoss += loss; seedCount++;
+        if (seedCount === p) {
+          avgGain = seedGain / p; avgLoss = seedLoss / p;
+          out[i] = valueOf(avgGain, avgLoss);
+        }
+      } else {
+        avgGain = (avgGain * (p - 1) + gain) / p;
+        avgLoss = (avgLoss * (p - 1) + loss) / p;
+        out[i] = valueOf(avgGain, avgLoss);
+      }
     }
     return out;
   }
@@ -238,10 +247,11 @@
       ? ((highest[i] + lowest[i]) / 2 + midBB[i]) / 2 : null);
     const momentumSource = closes.map((v, i) => Number.isFinite(center[i]) ? v - center[i] : null);
     const momentum = linRegEndpoint(momentumSource, p);
-    const squeezeOn = rows.map((_, i) => Number.isFinite(bbUpper[i]) && bbUpper[i] < kcUpper[i] && bbLower[i] > kcLower[i]);
-    const squeezeOff = rows.map((_, i) => Number.isFinite(bbUpper[i]) && !squeezeOn[i]);
-    const squeezeRelease = rows.map((_, i) => i > 0 && squeezeOn[i - 1] && squeezeOff[i]);
-    return { momentum, squeezeOn, squeezeOff, squeezeRelease, bbUpper, bbLower, kcUpper, kcLower };
+    const ready = rows.map((_, i) => [bbUpper[i], bbLower[i], kcUpper[i], kcLower[i]].every(Number.isFinite));
+    const squeezeOn = rows.map((_, i) => ready[i] ? bbUpper[i] < kcUpper[i] && bbLower[i] > kcLower[i] : null);
+    const squeezeOff = rows.map((_, i) => ready[i] ? !squeezeOn[i] : null);
+    const squeezeRelease = rows.map((_, i) => i > 0 && squeezeOn[i - 1] === true && squeezeOn[i] === false);
+    return { momentum, ready, squeezeOn, squeezeOff, squeezeRelease, bbUpper, bbLower, kcUpper, kcLower };
   }
 
   function calcIndicators(rows) {
@@ -282,16 +292,21 @@
         continue;
       }
       if (inPosition) {
-        trailingStop = Math.max(trailingStop, price - 2 * ranges[i]);
-        const stopHit = Number.isFinite(low) && low <= trailingStop;
+        // A candle's low can only test the stop that existed before this candle.
+        // Raising the trailing stop from the current close before testing this
+        // candle's low introduces intrabar look-ahead and false stop-outs.
+        const activeStop = trailingStop;
+        const stopHit = Number.isFinite(low) && Number.isFinite(activeStop) && low <= activeStop;
         const momentumExit = price < e20[i] && e5[i] < e10[i];
         const trendExit = price < e50[i] && e20[i] < e50[i];
         if (stopHit || momentumExit || trendExit) {
-          const exitPrice = stopHit ? Math.min(Number(row.open), trailingStop) : price;
-          signals[i] = { index: i, type: "exit", price: Number.isFinite(exitPrice) ? exitPrice : price, stop: trailingStop,
+          const exitPrice = stopHit ? Math.min(Number(row.open), activeStop) : price;
+          signals[i] = { index: i, type: "exit", price: Number.isFinite(exitPrice) ? exitPrice : price, stop: activeStop,
             reason: stopHit ? "2-ATR trailing stop touched." : trendExit ? "EMA 50 trend failed." : "EMA 20 / 5-10 momentum exit confirmed." };
           inPosition = false;
           trailingStop = null;
+        } else {
+          trailingStop = Math.max(activeStop, price - 2 * ranges[i]);
         }
       }
     }
