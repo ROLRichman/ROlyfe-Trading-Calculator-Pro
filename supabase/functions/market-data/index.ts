@@ -45,11 +45,14 @@ async function alphaVantageDailyFallback(
   if (interval === "1d") endpoint.searchParams.set("outputsize", "compact");
 
   try {
-    const response = await fetch(endpoint, { headers: { "Accept": "application/json" }, signal: AbortSignal.timeout(12000) });
+    const response = await fetch(endpoint, {
+      headers: { "Accept": "application/json" },
+      signal: AbortSignal.timeout(12000),
+    });
     if (!response.ok) return { error: "Alpha Vantage fallback request failed (HTTP " + response.status + ")." };
     const data = await response.json();
     if (data.Note || data.Information || data["Error Message"]) {
-      return { error: "Alpha Vantage fallback is currently rate-limited or this endpoint is not included in its plan." };
+      return { error: "Alpha Vantage fallback is rate-limited or this endpoint is not included in its plan." };
     }
     const series = data[seriesKey] as Record<string, Record<string, string>> | undefined;
     if (!series || typeof series !== "object") {
@@ -80,7 +83,7 @@ async function alphaVantageDailyFallback(
         bars,
         nextCursor: null,
         dataStatus: "provider_fallback",
-        note: "Fallback daily, weekly, or monthly OHLCV from Alpha Vantage. Intraday fallback is not assumed. Verify quote timing and provider plan access.",
+        note: "Fallback daily, weekly, or monthly OHLCV from Alpha Vantage. No free intraday fallback is assumed; check provider entitlement and timestamps.",
       },
     };
   } catch {
@@ -201,23 +204,8 @@ Deno.serve(async (req: Request) => {
       if (!symbols.length || symbols.length > 50 || symbols.some((x) => !/^(X:)?[A-Z0-9.^_-]{1,20}$/.test(x))) {
         return json({ error: "Use 1 to 50 valid Tickerbot symbols, e.g. AAPL or X:BTCUSD." }, 400);
       }
-      const cacheable = !cursor && !from && !to;
-      const ttlSeconds = subHour ? 20 : interval === "1h" || interval === "2h" || interval === "4h" ? 60 : 180;
-      const cacheKey = [symbol, interval, session, limit].join("|");
-      const cached = cacheable ? marketDataCache.get(cacheKey) : undefined;
-      if (cached && Date.now() - cached.savedAt <= cached.ttlMs) {
-        return json({ ...cached.payload, cache: "edge-memory", cacheAgeMs: Date.now() - cached.savedAt }, 200, ttlSeconds);
-      }
-
       const apiKey = Deno.env.get("TICKERBOT_API_KEY");
-      if (!apiKey) {
-        const fallback = await alphaVantageDailyFallback(symbol, interval, limit, from, to);
-        if (fallback.payload) {
-          if (cacheable) marketDataCache.set(cacheKey, { savedAt: Date.now(), ttlMs: ttlSeconds * 1000, payload: fallback.payload });
-          return json(fallback.payload, 200, ttlSeconds);
-        }
-        return json({ error: "Tickerbot is not configured and the secondary historical provider is unavailable.", fallbackError: fallback.error }, 503);
-      }
+      if (!apiKey) return json({ error: "Tickerbot is not configured in Edge Function Secrets." }, 503);
       const path = symbols.map((x) => encodeURIComponent(x)).join(",");
       const endpoint = new URL("https://api.tickerbot.io/v2/tickers/" + path);
       const response = await fetch(endpoint, {
@@ -306,7 +294,23 @@ Deno.serve(async (req: Request) => {
       const allowed = [
         "ticker","name","asset_class","asset_type","price","change_1d_pct","gap_pct","relative_volume",
         "market_cap","volume_today","rsi_14","stochastic_k","stochastic_d","macd_line","macd_signal",
-        "macd_histogram",if (provider === "tickerbot") {
+        "macd_histogram","adx_14","plus_di","minus_di","atr_14","atr_pct","bollinger_b","bollinger_width",
+        "ema_9","ema_12","ema_21","ema_26","sma_20","sma_50","sma_200","vwap","day_vwap",
+        "above_vwap","above_sma_50","above_sma_200"
+      ];
+      const results = Array.isArray(data.results) ? data.results.map((row: Record<string, unknown>) => {
+        const out: Record<string, unknown> = {};
+        for (const key of allowed) if (Object.prototype.hasOwnProperty.call(row, key)) out[key] = row[key];
+        return out;
+      }) : [];
+      return json({
+        provider: "tickerbot", assetClass, asOf: data.as_of || null, count: data.count ?? results.length,
+        results, notFound: data.not_found || [], meta: data._meta || null, query: data.query || body,
+        note: "Live scanner results from Tickerbot's current ticker universe. Indicator cadence and null coverage vary by signal."
+      });
+    }
+
+    if (provider === "tickerbot") {
       if (!/^(X:)?[A-Z0-9.^_-]{1,20}$/.test(symbol)) {
         return json({ error: "Provide a valid ticker, for example AAPL or X:BTCUSD." }, 400);
       }
@@ -341,8 +345,23 @@ Deno.serve(async (req: Request) => {
       if (cursor && cursor.length > 2048) {
         return json({ error: "Invalid cursor." }, 400);
       }
+      const cacheable = !cursor && !from && !to;
+      const ttlSeconds = subHour ? 20 : interval === "1h" || interval === "2h" || interval === "4h" ? 60 : 180;
+      const cacheKey = [symbol, interval, session, limit].join("|");
+      const cached = cacheable ? marketDataCache.get(cacheKey) : undefined;
+      if (cached && Date.now() - cached.savedAt <= cached.ttlMs) {
+        return json({ ...cached.payload, cache: "edge-memory", cacheAgeMs: Date.now() - cached.savedAt }, 200, ttlSeconds);
+      }
+
       const apiKey = Deno.env.get("TICKERBOT_API_KEY");
-      if (!apiKey) return json({ error: "Tickerbot is not configured in Edge Function Secrets." }, 503);
+      if (!apiKey) {
+        const fallback = await alphaVantageDailyFallback(symbol, interval, limit, from, to);
+        if (fallback.payload) {
+          if (cacheable) marketDataCache.set(cacheKey, { savedAt: Date.now(), ttlMs: ttlSeconds * 1000, payload: fallback.payload });
+          return json(fallback.payload, 200, ttlSeconds);
+        }
+        return json({ error: "Tickerbot is not configured and the secondary historical provider is unavailable.", fallbackError: fallback.error }, 503);
+      }
 
       const endpoint = new URL(`https://api.tickerbot.io/v2/bars/${symbol}/${interval}`);
       endpoint.searchParams.set("limit", String(limit));
@@ -356,46 +375,17 @@ Deno.serve(async (req: Request) => {
       });
 
       if (!response.ok) {
+        const fallback = await alphaVantageDailyFallback(symbol, interval, limit, from, to);
+        if (fallback.payload) {
+          if (cacheable) marketDataCache.set(cacheKey, { savedAt: Date.now(), ttlMs: ttlSeconds * 1000, payload: fallback.payload });
+          return json(fallback.payload, 200, ttlSeconds);
+        }
         return json({
-          error: response.status === 401 ? "Tickerbot rejected the API key." :
-            response.status === 403 ? "Tickerbot account does not have access to this data." :
-            response.status === 429 ? "Tickerbot rate limit reached. Try again later." :
-            response.status === 503 ? "Tickerbot historical bars are temporarily unavailable. Retry shortly." :
-            "Tickerbot historical-bars request failed.",
-          provider: "tickerbot",
-          providerStatus: response.status,
-        }, response.status === 429 ? 429 : response.status === 503 ? 503 : 502);
-      }
-
-      const data = await response.json();
-      if (!Array.isArray(data.bars) || data.coverage === "no_data") {
-        return json({
-          error: "Tickerbot returned no historical bars for this symbol and interval.",
-          provider: "tickerbot",
-          symbol,
-          interval,
-          coverage: data.coverage || "unknown",
-          asOf: data.as_of || null,
-        }, 422);
-      }
-
-      return json({
-        provider: "tickerbot",
-        symbol: data.ticker || symbol,
-        interval: data.interval || interval,
-        asOf: data.as_of || null,
-        count: data.count ?? data.bars.length,
-        coverage: data.coverage || "unknown",
-        adjusted: data.adjusted ?? null,
-        session: data.session || (subHour ? session : null),
-        bars: data.bars,
-        nextCursor: data.next_cursor ?? null,
-        dataStatus: "provider_response",
-        note: "Historical OHLCV bars from Tickerbot. Refresh timing and entitlements depend on the provider account. Not investment advice.",
-      });
-    }
-
-    a.",
+          error: response.status === 429
+            ? "Tickerbot rate limit reached; the secondary provider could not supply this interval."
+            : response.status === 403
+            ? "Tickerbot denied this interval; the secondary provider could not supply it."
+            : "Tickerbot historical bars are unavailable and the secondary provider returned no usable data.",
           provider: "tickerbot",
           providerStatus: response.status,
           fallbackError: fallback.error,
@@ -410,7 +400,7 @@ Deno.serve(async (req: Request) => {
           return json(fallback.payload, 200, ttlSeconds);
         }
         return json({
-          error: "Tickerbot returned no historical bars and the secondary provider did not return usable data.",
+          error: "Tickerbot returned no historical bars and the secondary provider returned no usable data.",
           provider: "tickerbot", symbol, interval,
           coverage: data.coverage || "unknown",
           fallbackError: fallback.error,
