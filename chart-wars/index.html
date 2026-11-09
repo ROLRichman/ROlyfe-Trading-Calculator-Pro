@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#07111d">
 <script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="./indicators.js"></script>
 <title>RO’Lyfe Chart Wars™ · Trading Arena</title>
 <style>
 :root{color-scheme:dark;--bg:#07111d;--panel:#101e2d;--panel2:#0b1724;--line:#263b4d;--muted:#9fb3c7;--green:#59e1aa;--red:#ff7e86;--gold:#f5cc78;--blue:#80c7ff}
@@ -50,6 +51,18 @@ a{color:var(--blue);text-decoration:none}.topnav,.tabs,.actions{display:flex;gap
 .chart-panel:fullscreen{overflow:auto;background:var(--bg);padding:14px}
 .chart-panel:fullscreen .chartwrap{height:calc(100vh - 300px);min-height:360px}
 @media(max-width:600px){.chartwrap{height:var(--chart-height,380px)}.chart-tools .tool-label{width:100%}.indicator-panels{grid-template-columns:1fr}}
+.chart-panel.expanded-internal{position:fixed;inset:0;z-index:9999;width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0;overflow:auto;padding:12px;background:var(--bg);box-shadow:0 0 0 100vmax #000b}
+.chart-panel.expanded-internal .chartwrap{height:calc(100dvh - 330px)!important;min-height:260px}
+body.chart-expanded{overflow:hidden}
+.rl-controls{display:grid;gap:9px;padding:10px;border-top:1px solid #263b4e}
+.rl-controls .indicator-toggles{padding:0}
+.rl-status{border:1px solid #36556a;border-radius:9px;padding:9px;background:#0b1724;color:#c5d6e4;font-size:.76rem}
+.rl-status.buy{border-color:#3b8c6b;color:#a8f1ce}
+.rl-status.exit{border-color:#854b54;color:#ffc1c4}
+.rl-control-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rl-control-row .field{flex:1;min-width:110px}
+.rl-control-row input[type=number]{width:100%;background:#071521;color:#fff;border:1px solid #36556a;border-radius:8px;padding:7px}
+@media(max-width:600px){.chart-panel.expanded-internal{padding:7px}.chart-panel.expanded-internal .chartwrap{height:calc(100dvh - 390px)!important;min-height:230px}}
 
 .scanner-watchlist{align-items:start;align-content:start;grid-auto-rows:min-content;margin:12px 0}
 .scanner-watchlist>.panel{margin:0;min-width:0;height:auto;align-self:start}
@@ -176,7 +189,7 @@ h2{color:#b8f0d5}
  <div class="chart-head"><div><div class="symbol" id="chartTitle">AAPL · Waiting for data</div><div class="sub" id="chartSub">Tickerbot historical OHLCV · selected timeframe</div></div><div class="sub" id="lastPrice">Last close —</div></div>
  <div class="chart-tools" aria-label="Chart controls">
   <span class="tool-label">CHART SIZE</span>
-  <button class="btn" data-chart-size="compact">Compact</button><button class="btn active" data-chart-size="standard">Standard</button><button class="btn" data-chart-size="large">Large</button><button class="btn" id="chartFullscreen">Full screen</button>  <span class="tool-label">ZOOM</span><button class="btn" id="zoomIn" aria-label="Zoom in">＋</button><button class="btn" id="zoomOut" aria-label="Zoom out">－</button><button class="btn" id="fitChart">Fit</button>
+  <button class="btn" data-chart-size="compact">Compact</button><button class="btn active" data-chart-size="standard">Standard</button><button class="btn" data-chart-size="large">Large</button><button class="btn" id="chartFullscreen">Full screen</button><button class="btn orange" id="chartExpand" aria-pressed="false">Expand inside page</button>  <span class="tool-label">ZOOM</span><button class="btn" id="zoomIn" aria-label="Zoom in">＋</button><button class="btn" id="zoomOut" aria-label="Zoom out">－</button><button class="btn" id="fitChart">Fit</button>
  </div>
  <div class="replay-tools" aria-label="Historical candle replay controls"><button class="btn orange" id="prevCandle" disabled>← Previous</button><button class="btn orange" id="nextCandle" disabled>Next candle →</button><button class="btn" id="playCandles" disabled>▶ Play</button><button class="btn" id="pauseCandles" disabled>Ⅱ Pause</button><button class="btn" id="soundToggle" aria-pressed="false">🔇 Sound: Off</button><input id="historyScrub" type="range" min="0" max="0" value="0" disabled aria-label="Scrub historical candles"><span class="replay-label" id="historyPosition">History: —</span></div>
  <div class="chartwrap"><div id="chart" role="img" aria-label="Interactive historical stock candlestick chart">Load real market data to view candles.</div></div>
@@ -190,7 +203,7 @@ h2{color:#b8f0d5}
   <label class="indicator-toggle"><input type="checkbox" data-indicator="hma31" checked> HMA 31</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="hma32"> HMA 32</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="rlband"> RL Pullback ATR</label>
-  <label class="indicator-toggle"><input type="checkbox" data-indicator="pps"> PPS-style arrows</label>
+  <label class="indicator-toggle"><input type="checkbox" data-indicator="pps" checked> RL buy / exit arrows</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="volume" checked> Volume</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="rsi" checked> RSI</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="macd" checked> MACD</label>
@@ -198,7 +211,21 @@ h2{color:#b8f0d5}
   <label class="indicator-toggle"><input type="checkbox" data-indicator="cci"> CCI</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="ttm"> TTM Squeeze</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="atr"> ATR</label>
- </div></details>
+ </div>
+ <div class="rl-controls">
+  <strong>RL 🏹 TREND &amp; PULLBACK ENGINE</strong>
+  <div class="indicator-toggles">
+   <label class="indicator-toggle"><input id="rlEngineEnabled" type="checkbox" checked> Enable RL analysis</label>
+   <label class="indicator-toggle"><input id="rlAutoPaper" type="checkbox"> Auto paper trade confirmed RL signals</label>
+   <label class="indicator-toggle"><input id="rlSignalSound" type="checkbox" checked> Sound on RL signals</label>
+  </div>
+  <div class="rl-control-row">
+   <div class="field"><label for="rlShares">AUTO PAPER SHARES</label><input id="rlShares" type="number" min="1" max="10000" step="1" value="1"></div>
+   <p class="small">Long-only. Signals confirm on completed historical candles. Auto trading is OFF until you switch it on.</p>
+  </div>
+  <div id="rlStatus" class="rl-status" aria-live="polite">RL is ready. Load historical candles to calculate signals.</div>
+ </div>
+ </details>
  <div id="indicatorPanels" class="indicator-panels" aria-live="polite"></div>
  <div class="indicators">
   <div class="indicator"><small>EMA 20</small><strong id="ema20">—</strong></div><div class="indicator"><small>EMA 50</small><strong id="ema50">—</strong></div><div class="indicator"><small>RSI 14</small><strong id="rsi">—</strong></div><div class="indicator"><small>MACD 12 / 26 / 9</small><strong id="macd">—</strong></div>
@@ -242,9 +269,10 @@ h2{color:#b8f0d5}
     <div class="field" id="triggerField" hidden><label for="triggerPrice">LIMIT / STOP PRICE</label><input type="number" id="triggerPrice" min="0.01" step="0.01" placeholder="Enter trigger price"></div>
     <div class="field"><label for="slippage">SIMULATED SLIPPAGE (BPS)</label><input type="number" id="slippage" min="0" max="100" step="1" value="5"></div>
     <div class="field"><label>FINNHUB REFERENCE QUOTE</label><div class="stat"><strong id="ticketQuote">—</strong><small id="ticketQuoteTime">Load a quote</small></div></div>
+    <div class="field"><label for="fillReference">PAPER FILL REFERENCE</label><select id="fillReference"><option value="replay" selected>Historical replay candle</option><option value="finnhub">Finnhub quote</option></select></div>
    </div>
    <div class="actions" style="margin-top:10px"><button class="btn primary" id="placeOrder">Place paper order</button><button class="btn" id="refreshQuote">Refresh quote &amp; evaluate orders</button></div>
-   <div class="feedback" id="orderFeedback" aria-live="polite">Market and triggered stop orders apply simulated slippage to the latest Finnhub reference quote. Limit orders fill at the better of the trigger or refreshed quote. No commission is modeled ($0 assumption).</div>
+   <div class="feedback" id="orderFeedback" aria-live="polite">Paper orders default to the currently displayed historical replay candle. Choose Finnhub quote to simulate against the separate quote feed. Simulated slippage is applied; commission is assumed to be $0. No broker order is sent.</div>
    <div class="note">A provider timestamp is shown with every quote. Exchange entitlement determines whether a quote is real-time or delayed. Paper fills are simulated, never routed to a brokerage.</div>
   </div>
   <aside class="panel">
@@ -285,6 +313,12 @@ const SUPABASE_URL = 'https://ykmdyfbklvuoseqdjnxy.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_FaJPNdtRsZTemxpbp98F2g_U9ngkFaG';
 const SUPABASE_LEGACY_ANON_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbWR5ZmJrbHZ1b3NlcWRqbnh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3ODk5OTQsImV4cCI6MjEwODM2NTk5NH0._YEZj2GSnPcLGXmwgj98V_JzXdJIhTmOFoAH9BSia2I";
 const FUNCTION_URL = SUPABASE_URL + '/functions/v1/market-data';
+const IND = window.ROLyfeIndicators;
+if (!IND) throw new Error('Chart Wars indicator calculation module failed to load.');
+const BAR_CACHE_PREFIX = 'rolyfe.pro.chart-bars.v2:';
+const BAR_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const QUOTE_CACHE_TTL_MS = 15000;
+const quoteCache = new Map();
 const ACCOUNT_KEY = 'rolyfe.pro.virtual-account.v1';
 const STARTING_CASH = 10000;
 const WATCHLIST_KEY = 'rolyfe.pro.watchlist.v1';
@@ -306,7 +340,7 @@ const SECTOR_UNIVERSE = {
  'Broad Market ETFs':['SPY','QQQ','DIA','IWM','VTI','VOO','RSP','SCHD','VYM'],
  'Sector ETFs':['XLK','XLF','XLY','XLP','XLC','XLV','XLE','XLI','XLB','XLU','XLRE']
 };
-let historyEndIndex=0, replayTimer=null, soundEnabled=false;
+let historyEndIndex=0, replayTimer=null, soundEnabled=false, chartExpanded=false, rlAutoProcessedIndex=0;
 function populateSectorPicker(){
  const select=$('sectorSymbol'),list=$('symbols');
  Object.entries(SECTOR_UNIVERSE).forEach(([sector,tickers])=>{
