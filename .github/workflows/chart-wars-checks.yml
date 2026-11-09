@@ -1,0 +1,40 @@
+name: Chart Wars Checks
+
+on:
+  pull_request:
+    paths:
+      - "chart-wars/**"
+      - ".github/workflows/chart-wars-checks.yml"
+  push:
+    branches:
+      - main
+      - "feature/chart-wars-rl-expansion-v2"
+    paths:
+      - "chart-wars/**"
+      - ".github/workflows/chart-wars-checks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chart-wars:
+    name: Indicator tests and application syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check indicator module syntax
+        run: node --check chart-wars/indicators.js
+      - name: Check paper trading module syntax
+        run: node --check chart-wars/paper-trading.js
+      - name: Check inline application syntax
+        run: node chart-wars/syntax-check.cjs
+      - name: Run indicator and RL tests
+        run: node --test chart-wars/indicators.test.js
+      - name: Run paper trading ledger and order tests
+        run: node --test chart-wars/paper-trading.test.js
