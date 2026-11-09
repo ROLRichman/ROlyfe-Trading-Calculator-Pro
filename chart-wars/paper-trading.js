@@ -85,6 +85,21 @@
     };
   }
 
+  function evaluateQuoteOrder(order, quotePrice) {
+    if (!order || !["market", "limit", "stop"].includes(order.type)) return null;
+    const side = sideOf(order.side), quote = priceOf(quotePrice, "Quote price");
+    const bps = value(order.slippageBps ?? 0, "Slippage basis points");
+    if (bps < 0 || bps > 100) throw new RangeError("Slippage must be between 0 and 100 basis points.");
+    if (order.type === "market") return { reference: quote, fill: slippageFill(quote, side, bps), type: "market" };
+    const trigger = priceOf(order.triggerPrice, "Trigger price");
+    if (order.type === "limit") {
+      const touched = side === "buy" ? quote <= trigger : quote >= trigger;
+      return touched ? { reference: quote, fill: side === "buy" ? Math.min(quote, trigger) : Math.max(quote, trigger), trigger, type: "limit" } : null;
+    }
+    const touched = side === "buy" ? quote >= trigger : quote <= trigger;
+    return touched ? { reference: quote, fill: slippageFill(quote, side, bps), trigger, type: "stop" } : null;
+  }
+
   function portfolioSummary(cashInput, positionsInput, tradesInput) {
     const cash = value(cashInput, "Cash");
     const positions = positionsInput && typeof positionsInput === "object" ? Object.values(positionsInput) : [];
@@ -102,5 +117,5 @@
     return { cash, marketValue, unrealized, realized, equity: cash + marketValue };
   }
 
-  return { notional, weightedAverageCost, realizedPnl, unrealizedPnl, slippageFill, evaluateReplayOrder, portfolioSummary };
+  return { notional, weightedAverageCost, realizedPnl, unrealizedPnl, slippageFill, evaluateReplayOrder, evaluateQuoteOrder, portfolioSummary };
 });
