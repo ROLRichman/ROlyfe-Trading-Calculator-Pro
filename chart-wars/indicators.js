@@ -85,7 +85,7 @@
     const p = periodOf(period), ranges = trueRange(rows), out = Array(rows.length).fill(null);
     let seed = [], previous = null;
     for (let i = 0; i < ranges.length; i++) {
-      const value = Number(ranges[i]);
+      const value = numeric(ranges[i]);
       if (!Number.isFinite(value)) { seed = []; previous = null; continue; }
       if (previous === null) {
         seed.push(value);
@@ -239,8 +239,9 @@
     const momentumSource = closes.map((v, i) => Number.isFinite(center[i]) ? v - center[i] : null);
     const momentum = linRegEndpoint(momentumSource, p);
     const squeezeOn = rows.map((_, i) => Number.isFinite(bbUpper[i]) && bbUpper[i] < kcUpper[i] && bbLower[i] > kcLower[i]);
-    const squeezeOff = rows.map((_, i) => Number.isFinite(bbUpper[i]) && bbUpper[i] > kcUpper[i] && bbLower[i] < kcLower[i]);
-    return { momentum, squeezeOn, squeezeOff, bbUpper, bbLower, kcUpper, kcLower };
+    const squeezeOff = rows.map((_, i) => Number.isFinite(bbUpper[i]) && !squeezeOn[i]);
+    const squeezeRelease = rows.map((_, i) => i > 0 && squeezeOn[i - 1] && squeezeOff[i]);
+    return { momentum, squeezeOn, squeezeOff, squeezeRelease, bbUpper, bbLower, kcUpper, kcLower };
   }
 
   function calcIndicators(rows) {
