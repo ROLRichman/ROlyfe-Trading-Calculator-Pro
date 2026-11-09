@@ -43,9 +43,9 @@ test("VWAP resets at the New York session date, not UTC midnight", () => {
     row(Date.parse("2026-11-10T14:30:00Z"), 20, 22, 20, 22, 100)
   ];
   const out = I.vwap(rows);
-  assert.equal(out[0], 11.333333333333334);
-  assert.equal(out[1], 12.333333333333334);
-  assert.equal(out[2], 21.333333333333332);
+  assert.ok(Math.abs(out[0] - 11.333333333333333) < 1e-10);
+  assert.ok(Math.abs(out[1] - 12.333333333333333) < 1e-10);
+  assert.ok(Math.abs(out[2] - 21.333333333333333) < 1e-10);
 });
 
 test("Stochastic flat window uses 50 and returns smoothed K/D", () => {
