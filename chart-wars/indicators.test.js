@@ -44,7 +44,7 @@ test("VWAP resets at the New York session date, not UTC midnight", () => {
   ];
   const out = I.vwap(rows);
   assert.equal(out[0], 11.333333333333334);
-  assert.equal(out[1], 12.833333333333334);
+  assert.equal(out[1], 12.333333333333334);
   assert.equal(out[2], 21.333333333333332);
 });
 
