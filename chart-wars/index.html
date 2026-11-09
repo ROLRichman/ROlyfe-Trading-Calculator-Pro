@@ -775,11 +775,11 @@ async function loadMarketData(){
  const interval=intervalValue(),session=$('session').value;
  const results=await Promise.allSettled([fetchBars(sym,interval,session),fetchQuote(sym)]);
  if(results[0].status==='fulfilled'){
-  bars=results[0].value.bars;barsMeta=results[0].value.meta;historyEndIndex=bars.length;stopReplay();
-  setBarsStatus(bars.length+' HISTORICAL BARS · TICKERBOT','good');
+  bars=results[0].value.bars;barsMeta=results[0].value.meta;historyEndIndex=Math.min(80,bars.length);rlAutoProcessedIndex=historyEndIndex;stopReplay();
+  setBarsStatus(bars.length+' HISTORICAL BARS · '+(barsMeta.provider||'PROVIDER').toUpperCase(),barsMeta.stale?'warn':'good');
   const asOf=barsMeta.asOf?timeLabel(barsMeta.asOf):(bars[bars.length-1].time?timeLabel(bars[bars.length-1].time):'provider timestamp not supplied');
-  setText('dataStatus','Real historical candles · Tickerbot · '+bars.length+' valid bars · as of '+asOf+' · coverage '+barsMeta.coverage+'.');
-  updateHeaderMarket();renderChart(bars.slice(-80));renderIndicators(bars);updateReplayControls();startGameRound();
+  setText('dataStatus',(barsMeta.stale?'Saved historical cache · not freshly verified':'Real historical candles')+' · '+barsMeta.provider+' · '+bars.length+' valid bars · latest '+asOf+' · coverage '+barsMeta.coverage+'.');
+  updateHeaderMarket();renderChart(bars.slice(0,historyEndIndex),0,bars);renderIndicators(bars.slice(0,historyEndIndex),bars);updateReplayControls();startGameRound();
  }else{
   bars=[];barsMeta=null;historyEndIndex=0;stopReplay();updateReplayControls();gameRound=null;setBarsStatus('HISTORICAL DATA UNAVAILABLE','error');
   setText('dataStatus',results[0].reason?.message||'Historical market data could not be loaded.');
@@ -802,17 +802,16 @@ async function loadMarketData(){
 function startGameRound(){
  if(bars.length<30){gameRound=null;setText('gameFeedback','Need more historical bars before starting a round.');return;}
  const visibleCount=24,maxStart=bars.length-3;
- const endIndex=Math.min(maxStart,Math.max(visibleCount,Math.floor(visibleCount+Math.random()*(maxStart-visibleCount+1))));
- const visible=bars.slice(endIndex-visibleCount,endIndex);
- const future=bars.slice(endIndex,endIndex+3);
- if(visible.length<visibleCount||future.length<3){gameRound=null;return;}
- gameRound={visible,future,revealed:false};
+ const endIndex=Math.max(visibleCount,Math.min(maxStart,historyEndIndex||visibleCount));
+ const visible=bars.slice(endIndex-visibleCount,endIndex),future=bars.slice(endIndex,endIndex+3);
+ if(visible.length<visibleCount||future.length<3){gameRound=null;setText('gameFeedback','Load at least 27 historical candles and move to an earlier candle to start a new round.');return;}
+ gameRound={visible,future,revealed:false,endIndex};
  selectedPick=null;
  document.querySelectorAll('.choice').forEach(x=>x.classList.remove('selected'));
  $('lockReveal').disabled=true;$('nextRound').disabled=true;
  setText('roundLabel','ROUND '+(account.game.played+1));
  setText('gameFeedback','Study '+visible.length+' historical candles. Choose the direction of the next three candles.');
- renderChart(visible,3);
+ renderChart(visible,3,bars);renderIndicators(visible,bars);
 }
 function classifyFuture(round){
  const base=round.visible[round.visible.length-1].close;
@@ -834,12 +833,13 @@ $('lockReveal').addEventListener('click',()=>{
  else account.game.streak=0;
  account.predictions.push({at:Date.now(),symbol:symbolValue(),interval:intervalValue(),pick:selectedPick,actual:outcome.direction,correct,pct:outcome.pct}); account.predictions=account.predictions.slice(-500);
  saveAccount();
- renderChart(gameRound.visible.concat(gameRound.future));
+ renderChart(gameRound.visible.concat(gameRound.future),0,bars);renderIndicators(gameRound.visible.concat(gameRound.future),bars);
+ historyEndIndex=Math.min(bars.length,gameRound.endIndex+3);rlAutoProcessedIndex=Math.max(rlAutoProcessedIndex,historyEndIndex);updateReplayControls();updateHeaderMarket();
  $('lockReveal').disabled=true;$('nextRound').disabled=false;
  const line=(correct?'Correct call · +100 points. ':'Not this time · 0 points. ')+'You chose '+selectedPick.toUpperCase()+'. The next three historical bars were '+outcome.direction.toUpperCase()+' ('+(outcome.pct>=0?'+':'')+number(outcome.pct,2)+'%).';
  $('gameFeedback').textContent=line;$('gameFeedback').className='feedback '+(correct?'good':'bad');
 });
-$('nextRound').addEventListener('click',startGameRound);
+$('nextRound').addEventListener('click',()=>{if(gameRound){historyEndIndex=Math.min(bars.length-3,gameRound.endIndex+3);rlAutoProcessedIndex=Math.max(rlAutoProcessedIndex,historyEndIndex);}startGameRound();});
 function portfolioValues(){
  let marketValue=0,unrealized=0;
  Object.values(account.positions).forEach(pos=>{
