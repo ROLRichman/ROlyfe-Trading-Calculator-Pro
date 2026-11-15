@@ -423,6 +423,13 @@ function renderWatchlist(){
   item.append(open,remove);host.append(item);
  });
 }
+window.addEventListener("rol-global-symbol-change",event=>{
+ const raw=String(event.detail&&event.detail.symbol||"").trim().toUpperCase();
+ if(!raw)return;
+ if(raw.endsWith("-USD")){setText("dataStatus","Global instrument "+raw+" selected. This Chart Wars simulator is stock/ETF-only; use the Personal Desk or RTIC for crypto charts.");return;}
+ if(!/^[A-Z0-9.^_-]{1,15}$/.test(raw)){setText("dataStatus","Unsupported symbol format for this simulator.");return;}
+ selectSymbol(raw);
+});
 function selectSymbol(sym){
  stopReplay();$('symbol').value=sym;
  if(sym===symbolValue()&&bars.length){loadMarketData();return;}
