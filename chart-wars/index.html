@@ -124,6 +124,18 @@ h2{color:#b8f0d5}
 @media(max-width:600px){.marketbar{grid-template-columns:1fr}.marketbar .field:first-child{grid-column:auto}.replay-tools>*{flex:1}.replay-tools input[type=range]{flex-basis:100%}}
 
 </style>
+<style>
+.tv-news-panel{margin:14px 0;padding:12px;border:1px solid #294235;border-radius:12px;background:#0b1711;overflow:hidden}
+.tv-news-panel>summary{cursor:pointer;list-style:none;font-weight:800;color:#8ce5b4;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.tv-news-panel>summary::-webkit-details-marker{display:none}
+.tv-news-panel>summary:after{content:"＋";color:#72e6a5}
+.tv-news-panel[open]>summary:after{content:"−"}
+.tv-news-widget{width:100%;min-height:520px;margin-top:12px}
+.tv-news-widget .tradingview-widget-container__widget{width:100%;min-height:520px}
+.tv-news-attribution{padding-top:8px;font-size:11px;color:#9bb7a5}
+.tv-news-attribution a{color:#80c7ff}
+@media(max-width:640px){.tv-news-widget,.tv-news-widget .tradingview-widget-container__widget{min-height:480px}}
+</style>
 </head>
 <body><main>
 <header>
@@ -183,6 +195,11 @@ h2{color:#b8f0d5}
  </div>
  <div class="replay-tools" aria-label="Historical candle replay controls"><button class="btn orange" id="prevCandle" disabled>← Previous</button><button class="btn orange" id="nextCandle" disabled>Next candle →</button><button class="btn" id="playCandles" disabled>▶ Play</button><button class="btn" id="pauseCandles" disabled>Ⅱ Pause</button><button class="btn" id="soundToggle" aria-pressed="false">🔇 Sound: Off</button><input id="historyScrub" type="range" min="0" max="0" value="0" disabled aria-label="Scrub historical candles"><span class="replay-label" id="historyPosition">History: —</span></div>
  <div class="chartwrap"><div id="chart" role="img" aria-label="Interactive historical stock candlestick chart">Load real market data to view candles.</div></div>
+<details class="tv-news-panel" id="tradingViewNewsPanel" open>
+ <summary>📰 TradingView Top Stories <small>Market-wide headlines</small></summary>
+ <div class="tradingview-widget-container tv-news-widget"><div class="tradingview-widget-container__widget"></div><div class="tv-news-attribution"><a href="https://www.tradingview.com/news/" target="_blank" rel="noopener">TradingView News</a></div>
+ <script type="application/json" class="tv-news-widget-config">{"feedMode":"all_symbols","isTransparent":true,"displayMode":"regular","width":"100%","height":520,"colorTheme":"dark","locale":"en"}</script></div>
+</details>
  <details class="indicator-tools"><summary>INDICATORS · Tap to expand / collapse</summary><div class="indicator-toggles">
   <label class="indicator-toggle"><input type="checkbox" data-indicator="ema200" checked> EMA 200</label>
   <label class="indicator-toggle"><input type="checkbox" data-indicator="ema50" checked> EMA 50</label>
@@ -895,6 +912,9 @@ $('applyAccountSize').addEventListener('click',()=>{
 });
 renderAccount();renderTradingTables();renderWatchlist();hashTab();setChartSize('standard');populateSectorPicker();
 })();
+</script>
+<script>
+(()=>{const p=document.getElementById("tradingViewNewsPanel");if(!p)return;let loaded=false;const load=()=>{if(loaded)return;const c=p.querySelector(".tv-news-widget-config"),host=p.querySelector(".tv-news-widget");if(!c||!host)return;let cfg;try{cfg=JSON.parse(c.textContent||"{}")}catch(_){return}const s=document.createElement("script");s.src="https://s3.tradingview.com/external-embedding/embed-widget-timeline.js";s.async=true;s.textContent=JSON.stringify(cfg);host.appendChild(s);loaded=true};if(p.open)load();p.addEventListener("toggle",()=>{if(p.open)load()})})();
 </script>
 </body>
 </html>
